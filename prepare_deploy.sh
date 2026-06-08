@@ -29,6 +29,7 @@ fi
 
 export PROJECT_DIR
 export DEPLOY_MODE
+export PYTHON_BIN="${PYTHON_BIN:-python3}"
 
 python3 - <<'PY'
 import os
@@ -38,6 +39,7 @@ from pathlib import Path
 project_dir = Path(os.environ["PROJECT_DIR"]).resolve()
 project_dir_str = str(project_dir)
 deploy_mode = os.environ["DEPLOY_MODE"]
+python_bin = os.environ["PYTHON_BIN"]
 
 
 root = project_dir
@@ -55,10 +57,12 @@ cron_text = re.sub(
     flags=re.MULTILINE,
 )
 cron_text = cron_text.replace("/path/to/hermes-arxiv-agent", project_dir_str)
+cron_text = re.sub(r"(?<!\S)python3(?=\s)", python_bin, cron_text)
 cron_generated.write_text(cron_text, encoding="utf-8")
 (root / ".deploy_mode").write_text(deploy_mode + "\n", encoding="utf-8")
 
 print(f"Patched repository for PROJECT_DIR={project_dir_str}")
+print(f"Using PYTHON_BIN={python_bin}")
 print("Updated files:")
 print(f"- .deploy_mode ({deploy_mode})")
 print(f"- {template_name}")
