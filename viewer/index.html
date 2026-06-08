@@ -1,0 +1,110 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>LLM Quant Papers Viewer</title>
+  <meta name="theme-color" content="#f7f5ef">
+  <link rel="icon" type="image/svg+xml" href="favicon.svg">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;700;800&family=Noto+Sans+SC:wght@400;500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+  <!-- Cloudflare Web Analytics -->
+  <script defer src='https://static.cloudflareinsights.com/beacon.min.js' data-cf-beacon='{"token": "__CF_TOKEN_PLACEHOLDER__"}'></script>
+  <!-- End Cloudflare Web Analytics -->
+</head>
+<body>
+  <div class="bg-shape bg-shape-a"></div>
+  <div class="bg-shape bg-shape-b"></div>
+
+  <header class="topbar">
+    <div class="brand">
+      <div class="brand-dot"></div>
+      <div>
+        <h1>LLM 量化论文阅读器</h1>
+        <p id="metaText">加载中...</p>
+      </div>
+    </div>
+  </header>
+
+  <main class="container">
+    <section class="filters">
+      <div class="field date-mode-field">
+        <label for="dateMode">日期维度</label>
+        <select id="dateMode">
+          <option value="crawled_date">抓取日期</option>
+          <option value="published_date">发表日期</option>
+        </select>
+      </div>
+
+      <div class="field start-date-field">
+        <label for="startDate">开始日期</label>
+        <input id="startDate" type="date">
+      </div>
+
+      <div class="field end-date-field">
+        <label for="endDate">结束日期</label>
+        <input id="endDate" type="date">
+      </div>
+
+      <div class="field quick-range-field">
+        <label>快捷时间</label>
+        <div class="quick-range" id="quickRange">
+          <button type="button" class="btn" data-range="today">今天</button>
+          <button type="button" class="btn" data-range="3d">过去 3 天</button>
+          <button type="button" class="btn" data-range="7d">过去 1 周</button>
+          <button type="button" class="btn" data-range="all">全部</button>
+        </div>
+      </div>
+
+      <div class="field search-field">
+        <label for="keyword">关键词</label>
+        <input id="keyword" type="text" placeholder="标题/作者/单位/摘要关键词">
+      </div>
+
+      <div class="field favorite-only-field">
+        <label for="favoriteOnly">收藏筛选</label>
+        <label class="switch-label">
+          <input id="favoriteOnly" type="checkbox">
+          <span>只看收藏</span>
+        </label>
+      </div>
+
+      <div class="actions">
+        <button id="applyBtn" class="btn btn-primary">筛选</button>
+        <button id="resetBtn" class="btn">重置</button>
+      </div>
+    </section>
+
+    <section class="summary" id="summary"></section>
+    <section class="cards" id="cards"></section>
+  </main>
+
+  <template id="paperTpl">
+    <article class="card">
+      <div class="card-head">
+        <span class="pill"></span>
+        <a class="title" target="_blank" rel="noopener noreferrer"></a>
+        <button class="favorite-btn" type="button" aria-label="收藏">☆ 收藏</button>
+      </div>
+      <div class="meta"></div>
+      <div class="tags"></div>
+      <div class="section">
+        <h3>单位</h3>
+        <p class="affiliations"></p>
+      </div>
+      <div class="section">
+        <h3>中文总结</h3>
+        <p class="summary-cn"></p>
+      </div>
+      <details>
+        <summary>查看 Abstract</summary>
+        <p class="abstract"></p>
+      </details>
+    </article>
+  </template>
+
+  <script src="app.js"></script>
+</body>
+</html>
