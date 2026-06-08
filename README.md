@@ -1,5 +1,7 @@
 # hermes-arxiv-agent
 
+Adapted from [genggng/hermes-arxiv-agent](https://github.com/genggng/hermes-arxiv-agent). Many thanks to the original author and the Hermes Agent project. This fork focuses on frontier generative recommender systems, including multimodal, LLM-based, agentic, and generative retrieval methods.
+
 一个基于 Hermes 的 agent skill：每天自动检索 arXiv 论文、补全中文摘要和作者单位，并将结果推送到飞书，同时提供本地或 GitHub Pages 的网页阅读入口。项目支持两种模式：
 
 - 本地模式：默认模式。每天自动检索并处理论文，推送到你自己的飞书，并通过 `python3 viewer/run_viewer.py` 在本机启动网页阅读页

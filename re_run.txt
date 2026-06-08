@@ -1,0 +1,33 @@
+Hermes Service Recovery
+=======================
+
+Project directory:
+/home/YangZC/YZC/Arxiv_Agent
+
+1. Activate the environment:
+   conda activate Hermes
+
+2. Check the gateway and scheduled job:
+   hermes gateway status
+   hermes cron status
+   hermes cron list
+
+3. Restart the gateway if it is stopped or unhealthy:
+   hermes gateway restart
+
+4. If the service is missing, reinstall and start it:
+   hermes gateway install --force
+   hermes gateway start
+
+5. Check recent logs:
+   journalctl --user -u hermes-gateway.service -n 100 --no-pager
+
+6. Manually run the daily job when a scheduled run was missed:
+   hermes cron run e8ba8063b112
+   hermes cron tick
+
+7. Verify that the job is active:
+   hermes cron list
+
+The daily job runs at 09:00 Asia/Shanghai, sends the report to Feishu,
+and publishes updated viewer data to GitHub Pages.
