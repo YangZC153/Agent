@@ -197,6 +197,6 @@ bash scripts/publish_viewer.sh
 
 ## 关键词默认配置
 
-默认监控方向是 LLM 量化相关论文。
+默认监控方向是生成式推荐前沿论文，重点覆盖多模态生成式推荐、LLM/Agent 推荐、扩散式推荐、序列生成推荐和 foundation model 推荐。
 
 如需修改监控方向，编辑 [search_keywords.txt](search_keywords.txt) 即可。

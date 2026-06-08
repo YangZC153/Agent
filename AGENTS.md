@@ -13,7 +13,7 @@ It is designed to:
 - send a daily Feishu report
 - provide a paper viewer website, either locally or via GitHub Pages
 
-The default research topic is LLM quantization, configured in `search_keywords.txt`.
+The default research topic is frontier generative recommendation, configured in `search_keywords.txt`.
 
 ## Core Data Flow
 

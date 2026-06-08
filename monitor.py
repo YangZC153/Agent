@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-arxiv LLM 量化论文自动监控主脚本
+arxiv 生成式推荐论文自动监控主脚本
 每天定时执行：搜索 -> 查重 -> 下载 PDF -> 输出结构化 JSON
 中文总结和作者单位提取由 hermes cronjob agent 调用 LLM 完成
 """
@@ -94,7 +94,23 @@ def save_crawled_ids_batch(new_ids: list[str]):
 
 
 def load_search_keywords() -> str:
-    default_keywords = "all:quantization+AND+all:large+AND+all:language+AND+all:model"
+    default_keywords = (
+        "(all:%22generative+recommendation%22+OR+all:%22generative+recommender%22"
+        "+OR+all:%22generative+retrieval%22+OR+all:%22multimodal+recommendation%22"
+        "+OR+all:%22multimodal+recommender%22"
+        "+OR+(all:%22recommendation+system%22+AND+(all:%22large+language+model%22"
+        "+OR+all:LLM+OR+all:agent+OR+all:agentic+OR+all:generative+OR+all:diffusion"
+        "+OR+all:multimodal+OR+all:%22foundation+model%22))"
+        "+OR+(all:%22recommender+system%22+AND+(all:%22large+language+model%22"
+        "+OR+all:LLM+OR+all:agent+OR+all:agentic+OR+all:generative+OR+all:diffusion"
+        "+OR+all:multimodal+OR+all:%22foundation+model%22))"
+        "+OR+(all:%22sequential+recommendation%22+AND+(all:generative+OR+all:LLM"
+        "+OR+all:%22large+language+model%22))"
+        "+OR+(all:%22semantic+ID%22+AND+(all:recommendation+OR+all:recommender"
+        "+OR+all:retrieval))"
+        "+OR+(all:%22collaborative+filtering%22+AND+(all:generative+OR+all:LLM"
+        "+OR+all:%22large+language+model%22+OR+all:diffusion)))"
+    )
     if KEYWORDS_FILE.exists():
         with open(KEYWORDS_FILE, "r", encoding="utf-8") as f:
             kw = f.read().strip()
@@ -549,7 +565,7 @@ def main():
             "pending_count": 0,
             "new_papers": [],
             "papers_to_process": [],
-            "feishu_msg": f"✅ 今日（{date.today().isoformat()}）未发现新的 LLM 量化论文。",
+            "feishu_msg": f"✅ 今日（{date.today().isoformat()}）未发现新的生成式推荐论文。",
         }
         with open(OUTPUT_JSON, "w", encoding="utf-8") as f:
             json.dump(output, f, ensure_ascii=False, indent=2)
