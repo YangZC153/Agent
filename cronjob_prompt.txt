@@ -6,6 +6,8 @@
 - 不要使用 `execute_code`，不要创建临时 Python/JSON 调试文件
 - 终端输出保持简短，不要把完整 PDF 文本、完整 JSON 或完整 Excel 内容输出到对话
 - 处理论文时每批最多 5 篇；每批完成后立即写回 Excel，只保留最终字段，避免上下文持续增长
+- `monitor.py` 已完成五主题召回、相关性排序和配额筛选；不要把候选标题再次提交给 LLM 筛选
+- 只处理 `papers_to_process`，其数量最多为 10；不得自行搜索、追加或总结列表之外的论文
 - `monitor.py` 下载论文可能需要数分钟，执行该命令时允许最多 15 分钟
 - 全部步骤成功后立即输出最终飞书消息，不再执行额外检查或分析
 
@@ -25,7 +27,9 @@ cd /path/to/hermes-arxiv-agent && python3 monitor.py
 
 其中：
 - `new_count` 表示本次新抓取的论文数
-- `pending_count` 表示当前仍需要 agent 补全的论文数
+- `pending_count` 表示本次 LLM 批次论文数，硬上限为 10
+- `pending_total_count` 表示 Excel 中全部尚未补全的论文数
+- 新论文可能包含 `topic_id` 和 `topic_name`，表示本地筛选时归属的优先主题
 - 优先以 `papers_to_process` 作为本次必须处理的论文列表；若不存在，再使用 `new_papers`
 
 对待处理列表中的每篇论文必须完成以下两步：
@@ -76,8 +80,7 @@ cd /path/to/hermes-arxiv-agent && python3 monitor.py --sync-pending-state
 ```
 📚 **论文日报** | YYYY-MM-DD
 共发现 **N** 篇新论文
-[最多列出最新 10 篇；每篇：标题、arXiv ID、日期、作者、单位、PDF 链接、90-150 字中文摘要]
-如超过 10 篇：另有 **M** 篇已处理，请在本地网页查看完整列表。
+[最多 10 篇；每篇：主题、标题、arXiv ID、日期、作者、单位、PDF 链接、90-150 字中文摘要]
 PDF 已下载至 papers/，记录已更新至 papers_record.xlsx，网站数据已更新至 viewer/papers_data.json。
 ```
 **重要：最终回复只输出飞书消息文本，不要输出其他说明。**

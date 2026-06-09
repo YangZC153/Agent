@@ -6,14 +6,14 @@
 
 It is designed to:
 
-- search arXiv daily with configurable keywords
+- search arXiv daily with configurable topic queries and quotas
 - download newly discovered PDFs
 - use Hermes/LLM to extract author affiliations and generate `summary_cn`
 - write results back to `papers_record.xlsx`
 - send a daily Feishu report
 - provide a paper viewer website, either locally or via GitHub Pages
 
-The default research topic is frontier generative recommendation, configured in `search_keywords.txt`.
+The default research topics and quotas are configured in `search_topics.json`.
 
 ## Core Data Flow
 
@@ -33,13 +33,14 @@ Daily flow:
 
 1. `python3 monitor.py`
 2. arXiv search returns the newest matching papers
-3. new PDFs are downloaded and appended/upserted into Excel
-4. Hermes/agent reads `new_papers.json`
-5. Hermes/agent extracts `affiliations` from PDFs and writes `summary_cn`
-6. Hermes/agent updates `papers_record.xlsx`
-7. `python3 viewer/build_data.py` rebuilds `viewer/papers_data.json`
-8. `python3 monitor.py --sync-pending-state` refreshes `pending_llm_ids.txt`
-9. optional: `bash scripts/publish_viewer.sh` pushes viewer changes and triggers GitHub Pages
+3. local metadata scoring selects at most 10 papers with five-topic quotas
+4. only selected PDFs are downloaded and appended/upserted into Excel
+5. Hermes/agent reads `new_papers.json`
+6. Hermes/agent extracts `affiliations` from PDFs and writes `summary_cn`
+7. Hermes/agent updates `papers_record.xlsx`
+8. `python3 viewer/build_data.py` rebuilds `viewer/papers_data.json`
+9. `python3 monitor.py --sync-pending-state` refreshes `pending_llm_ids.txt`
+10. optional: `bash scripts/publish_viewer.sh` pushes viewer changes and triggers GitHub Pages
 
 Important:
 

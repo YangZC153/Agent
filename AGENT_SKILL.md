@@ -17,7 +17,7 @@ Use it when the user wants any of the following:
 - re-create the cron prompt with the correct local path
 - choose between local-only usage and GitHub Pages publishing
 
-The repository defaults to monitoring quantization-related papers. If the user wants a different research topic, update `search_keywords.txt` during deployment.
+The repository defaults to monitoring five frontier generative-recommendation topics. Topic queries and quotas are configured in `search_topics.json`.
 
 Do not assume the current local folder name matches the remote repository name. Treat the GitHub repository name `hermes-arxiv-agent` as canonical for clone and deployment instructions.
 
@@ -149,8 +149,8 @@ If the environment uses `pip3`, use that instead.
 
 Also note the repository default search scope:
 
-- the default query in `search_keywords.txt` targets quantization-related LLM papers
-- if the user wants another topic, edit `search_keywords.txt` before the first scheduled run
+- `search_topics.json` defines the arXiv queries, priority order, and per-topic quotas
+- edit `search_topics.json` before the first scheduled run when the user wants another topic mix
 
 ### 4. Run the deployment preparation script
 

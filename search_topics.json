@@ -1,0 +1,94 @@
+[
+  {
+    "id": 1,
+    "name": "Multimodal generative recommendation",
+    "target_quota": 6,
+    "query": "(all:multimodal AND all:generative AND (all:recommendation OR all:recommender))",
+    "ranking_terms": [
+      "multimodal generative recommendation",
+      "multimodal recommendation",
+      "multimodal recommender",
+      "generative recommendation",
+      "generative recommender"
+    ],
+    "required_term_groups": [
+      ["multimodal"],
+      ["generative"],
+      ["recommendation", "recommender"]
+    ]
+  },
+  {
+    "id": 2,
+    "name": "Collaborative filtering + generative recommendation",
+    "target_quota": 1,
+    "query": "(all:\"collaborative filtering\" AND (all:generative OR all:\"large language model\" OR all:LLM))",
+    "ranking_terms": [
+      "collaborative filtering",
+      "generative recommendation",
+      "generative recommender",
+      "large language model"
+    ],
+    "required_term_groups": [
+      ["collaborative filtering"],
+      [
+        "generative recommendation",
+        "generative recommender",
+        "semantic id",
+        "large language model",
+        "llm",
+        "diffusion",
+        "autoregressive"
+      ]
+    ]
+  },
+  {
+    "id": 3,
+    "name": "LLM + recommendation",
+    "target_quota": 1,
+    "query": "((all:LLM OR all:\"large language model\") AND (all:\"recommender system\" OR all:\"recommendation system\" OR all:\"recommendation model\"))",
+    "ranking_terms": [
+      "large language model",
+      "llm",
+      "recommendation",
+      "recommender"
+    ],
+    "required_term_groups": [
+      ["large language model", "llm"],
+      ["recommender system", "recommendation system", "recommendation model", "recommendation task"]
+    ]
+  },
+  {
+    "id": 4,
+    "name": "Agentic recommender systems",
+    "target_quota": 1,
+    "query": "((all:agentic OR all:\"LLM agent\" OR all:\"multi-agent\" OR all:\"recommendation agent\" OR all:\"recommender agent\") AND (all:\"recommender system\" OR all:\"recommendation system\" OR all:\"recommendation agent\" OR all:\"recommender agent\"))",
+    "ranking_terms": [
+      "agentic recommender",
+      "agentic recommendation",
+      "recommender agent",
+      "recommendation agent",
+      "multi-agent",
+      "recommender system",
+      "recommendation system"
+    ],
+    "required_term_groups": [
+      ["agentic", "llm agent", "multi-agent", "recommendation agent", "recommender agent"],
+      ["recommender system", "recommendation system", "recommendation agent", "recommender agent"]
+    ]
+  },
+  {
+    "id": 5,
+    "name": "Generative recommendation / retrieval",
+    "target_quota": 1,
+    "query": "(all:\"generative recommendation\" OR all:\"generative recommender\" OR (all:\"generative retrieval\" AND (all:recommendation OR all:recommender OR all:\"semantic id\")))",
+    "ranking_terms": [
+      "generative recommendation",
+      "generative recommender",
+      "generative retrieval",
+      "semantic id"
+    ],
+    "required_term_groups": [
+      ["generative recommendation", "generative recommender", "generative retrieval"]
+    ]
+  }
+]

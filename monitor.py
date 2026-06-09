@@ -10,7 +10,7 @@ import sys
 import json
 import time
 import xml.etree.ElementTree as ET
-from datetime import datetime, date
+from datetime import datetime, date, timedelta
 from pathlib import Path
 
 import requests
@@ -24,13 +24,134 @@ EXCEL_FILE = BASE_DIR / "papers_record.xlsx"
 VIEWER_JSON = BASE_DIR / "viewer" / "papers_data.json"
 CRAWLED_IDS_FILE = BASE_DIR / "crawled_ids.txt"
 PENDING_LLM_IDS_FILE = BASE_DIR / "pending_llm_ids.txt"
-KEYWORDS_FILE = BASE_DIR / "search_keywords.txt"
+TOPICS_FILE = BASE_DIR / "search_topics.json"
 OUTPUT_JSON = BASE_DIR / "new_papers.json"   # 输出给 hermes agent 的中间文件
 
 # arxiv API 配置
 ARXIV_API = "https://export.arxiv.org/api/query"
-MAX_RESULTS = 50
+DAILY_LLM_LIMIT = 10
+CANDIDATES_PER_TOPIC = 20
+RECENT_PAPER_DAYS = 7
 REQUEST_INTERVAL = 3  # 秒
+
+DEFAULT_SEARCH_TOPICS = [
+    {
+        "id": 1,
+        "name": "Multimodal generative recommendation",
+        "target_quota": 6,
+        "query": (
+            "(all:multimodal AND all:generative AND "
+            "(all:recommendation OR all:recommender))"
+        ),
+        "ranking_terms": [
+            "multimodal generative recommendation",
+            "multimodal recommendation",
+            "multimodal recommender",
+            "generative recommendation",
+            "generative recommender",
+        ],
+        "required_term_groups": [
+            ["multimodal"],
+            ["generative"],
+            ["recommendation", "recommender"],
+        ],
+    },
+    {
+        "id": 2,
+        "name": "Collaborative filtering + generative recommendation",
+        "target_quota": 1,
+        "query": (
+            "(all:\"collaborative filtering\" AND "
+            "(all:generative OR all:\"large language model\" OR all:LLM))"
+        ),
+        "ranking_terms": [
+            "collaborative filtering",
+            "generative recommendation",
+            "generative recommender",
+            "large language model",
+        ],
+        "required_term_groups": [
+            ["collaborative filtering"],
+            [
+                "generative recommendation",
+                "generative recommender",
+                "semantic id",
+                "large language model",
+                "llm",
+                "diffusion",
+                "autoregressive",
+            ],
+        ],
+    },
+    {
+        "id": 3,
+        "name": "LLM + recommendation",
+        "target_quota": 1,
+        "query": (
+            "((all:LLM OR all:\"large language model\") AND "
+            "(all:\"recommender system\" OR all:\"recommendation system\" "
+            "OR all:\"recommendation model\"))"
+        ),
+        "ranking_terms": [
+            "large language model",
+            "llm",
+            "recommendation",
+            "recommender",
+        ],
+        "required_term_groups": [
+            ["large language model", "llm"],
+            [
+                "recommender system",
+                "recommendation system",
+                "recommendation model",
+                "recommendation task",
+            ],
+        ],
+    },
+    {
+        "id": 4,
+        "name": "Agentic recommender systems",
+        "target_quota": 1,
+        "query": (
+            "((all:agentic OR all:\"LLM agent\" OR all:\"multi-agent\" "
+            "OR all:\"recommendation agent\" OR all:\"recommender agent\") AND "
+            "(all:\"recommender system\" OR all:\"recommendation system\" "
+            "OR all:\"recommendation agent\" OR all:\"recommender agent\"))"
+        ),
+        "ranking_terms": [
+            "agentic recommender",
+            "agentic recommendation",
+            "recommender agent",
+            "recommendation agent",
+            "multi-agent",
+            "recommender system",
+            "recommendation system",
+        ],
+        "required_term_groups": [
+            ["agentic", "llm agent", "multi-agent", "recommendation agent", "recommender agent"],
+            ["recommender system", "recommendation system", "recommendation agent", "recommender agent"],
+        ],
+    },
+    {
+        "id": 5,
+        "name": "Generative recommendation / retrieval",
+        "target_quota": 1,
+        "query": (
+            "(all:\"generative recommendation\" OR all:\"generative recommender\" "
+            "OR (all:\"generative retrieval\" AND "
+            "(all:recommendation OR all:recommender OR all:\"semantic id\")))"
+        ),
+        "ranking_terms": [
+            "generative recommendation",
+            "generative recommender",
+            "generative retrieval",
+            "semantic id",
+        ],
+        "required_term_groups": [
+            ["generative recommendation", "generative recommender", "generative retrieval"],
+        ],
+    },
+]
 
 # ==================== 工具函数 ====================
 
@@ -93,41 +214,36 @@ def save_crawled_ids_batch(new_ids: list[str]):
             f.write(arxiv_id + "\n")
 
 
-def load_search_keywords() -> str:
-    default_keywords = (
-        "(all:%22generative+recommendation%22+OR+all:%22generative+recommender%22"
-        "+OR+all:%22generative+retrieval%22+OR+all:%22multimodal+recommendation%22"
-        "+OR+all:%22multimodal+recommender%22"
-        "+OR+(all:%22recommendation+system%22+AND+(all:%22large+language+model%22"
-        "+OR+all:LLM+OR+all:agent+OR+all:agentic+OR+all:generative+OR+all:diffusion"
-        "+OR+all:multimodal+OR+all:%22foundation+model%22))"
-        "+OR+(all:%22recommender+system%22+AND+(all:%22large+language+model%22"
-        "+OR+all:LLM+OR+all:agent+OR+all:agentic+OR+all:generative+OR+all:diffusion"
-        "+OR+all:multimodal+OR+all:%22foundation+model%22))"
-        "+OR+(all:%22sequential+recommendation%22+AND+(all:generative+OR+all:LLM"
-        "+OR+all:%22large+language+model%22))"
-        "+OR+(all:%22semantic+ID%22+AND+(all:recommendation+OR+all:recommender"
-        "+OR+all:retrieval))"
-        "+OR+(all:%22collaborative+filtering%22+AND+(all:generative+OR+all:LLM"
-        "+OR+all:%22large+language+model%22+OR+all:diffusion)))"
-    )
-    if KEYWORDS_FILE.exists():
-        with open(KEYWORDS_FILE, "r", encoding="utf-8") as f:
-            kw = f.read().strip()
-            return kw if kw else default_keywords
-    return default_keywords
+def load_search_topics() -> list[dict]:
+    if not TOPICS_FILE.exists():
+        return DEFAULT_SEARCH_TOPICS
+
+    try:
+        with open(TOPICS_FILE, "r", encoding="utf-8") as f:
+            topics = json.load(f)
+        if not isinstance(topics, list) or not topics:
+            raise ValueError("expected a non-empty JSON list")
+        required = {"id", "name", "target_quota", "query", "ranking_terms"}
+        for topic in topics:
+            missing = required - set(topic)
+            if missing:
+                raise ValueError(f"topic missing fields: {sorted(missing)}")
+        return sorted(topics, key=lambda item: int(item["id"]))
+    except Exception as e:
+        print(f"[WARN] Failed to load {TOPICS_FILE.name}: {e}; using defaults")
+        return DEFAULT_SEARCH_TOPICS
 
 
-def search_arxiv_papers(keywords: str, max_results: int = MAX_RESULTS) -> list[dict]:
-    url = (
-        f"{ARXIV_API}?search_query={keywords}"
-        f"&max_results={max_results}"
-        f"&sortBy=submittedDate"
-        f"&sortOrder=descending"
-    )
+def search_arxiv_papers(query: str, max_results: int = CANDIDATES_PER_TOPIC) -> list[dict]:
+    params = {
+        "search_query": query,
+        "max_results": max_results,
+        "sortBy": "submittedDate",
+        "sortOrder": "descending",
+    }
 
-    print(f"[INFO] Searching arxiv: {keywords}")
-    response = requests.get(url, timeout=30)
+    print(f"[INFO] Searching arxiv: {query}")
+    response = requests.get(ARXIV_API, params=params, timeout=30)
     response.raise_for_status()
 
     ns = {"a": "http://www.w3.org/2005/Atom"}
@@ -166,6 +282,148 @@ def search_arxiv_papers(keywords: str, max_results: int = MAX_RESULTS) -> list[d
             continue
 
     return papers
+
+
+def topic_relevance_score(paper: dict, topic: dict) -> int:
+    """Use local title/abstract matching so candidate filtering costs no LLM tokens."""
+    title = paper.get("title", "").casefold()
+    abstract = paper.get("summary", "").casefold()
+    score = 0
+    for term in topic.get("ranking_terms", []):
+        needle = str(term).casefold().strip()
+        if not needle:
+            continue
+        score += title.count(needle) * 8
+        score += abstract.count(needle) * 3
+    return score
+
+
+def paper_matches_topic(paper: dict, topic: dict) -> bool:
+    text = f"{paper.get('title', '')} {paper.get('summary', '')}".casefold()
+    for group in topic.get("required_term_groups", []):
+        if not any(str(term).casefold() in text for term in group):
+            return False
+    return True
+
+
+def paper_is_recent(paper: dict, today: date | None = None) -> bool:
+    today = today or date.today()
+    try:
+        published = date.fromisoformat(str(paper.get("published_date", "")))
+    except ValueError:
+        return False
+    return published >= today - timedelta(days=RECENT_PAPER_DAYS)
+
+
+def select_topic_papers(
+    candidates_by_topic: dict[int, list[dict]],
+    topics: list[dict],
+    limit: int,
+) -> list[dict]:
+    """
+    Select unique papers without an LLM call.
+
+    First reserve one paper per topic, then meet each target quota (6/1/1/1/1
+    by default), and finally fill gaps in topic priority order.
+    """
+    if limit <= 0:
+        return []
+
+    ranked: dict[int, list[dict]] = {}
+    for topic in topics:
+        topic_id = int(topic["id"])
+        papers = candidates_by_topic.get(topic_id, [])
+        ranked[topic_id] = sorted(
+            papers,
+            key=lambda paper: (
+                topic_relevance_score(paper, topic),
+                paper.get("published_date", ""),
+                paper.get("arxiv_id", ""),
+            ),
+            reverse=True,
+        )
+
+    selected: list[dict] = []
+    selected_ids: set[str] = set()
+    selected_per_topic = {int(topic["id"]): 0 for topic in topics}
+
+    def take(topic: dict, count: int) -> int:
+        topic_id = int(topic["id"])
+        taken = 0
+        for paper in ranked.get(topic_id, []):
+            if len(selected) >= limit or taken >= count:
+                break
+            arxiv_id = paper["arxiv_id"]
+            if arxiv_id in selected_ids:
+                continue
+            selected.append({
+                **paper,
+                "topic_id": topic_id,
+                "topic_name": topic["name"],
+                "selection_score": topic_relevance_score(paper, topic),
+            })
+            selected_ids.add(arxiv_id)
+            selected_per_topic[topic_id] += 1
+            taken += 1
+        return taken
+
+    # Coverage pass: when enough slots exist, every topic gets at least one.
+    for topic in topics:
+        if len(selected) >= limit:
+            break
+        take(topic, 1)
+
+    # Target pass: topic 1 grows to six; the other topics retain one each.
+    for topic in topics:
+        if len(selected) >= limit:
+            break
+        topic_id = int(topic["id"])
+        remaining = max(0, int(topic["target_quota"]) - selected_per_topic[topic_id])
+        take(topic, remaining)
+
+    # Fill missing quota from the highest-priority topic with available papers.
+    for topic in topics:
+        if len(selected) >= limit:
+            break
+        take(topic, limit - len(selected))
+
+    return selected
+
+
+def search_and_select_new_papers(
+    topics: list[dict],
+    crawled_ids: set[str],
+    limit: int,
+) -> list[dict]:
+    candidates_by_topic: dict[int, list[dict]] = {}
+    for index, topic in enumerate(topics):
+        topic_id = int(topic["id"])
+        try:
+            candidates = search_arxiv_papers(topic["query"])
+        except Exception as e:
+            print(f"[ERROR] Topic {topic_id} search failed: {e}")
+            candidates = []
+        candidates_by_topic[topic_id] = [
+            paper for paper in candidates
+            if paper["arxiv_id"] not in crawled_ids
+            and paper_is_recent(paper)
+            and paper_matches_topic(paper, topic)
+        ]
+        print(
+            f"[INFO] Topic {topic_id} candidates | "
+            f"retrieved={len(candidates)} new={len(candidates_by_topic[topic_id])}"
+        )
+        if index < len(topics) - 1:
+            time.sleep(REQUEST_INTERVAL)
+
+    selected = select_topic_papers(candidates_by_topic, topics, limit)
+    print(f"[INFO] Selected {len(selected)} papers for today's LLM budget ({limit})")
+    for paper in selected:
+        print(
+            f"  - T{paper['topic_id']} [{paper['arxiv_id']}] "
+            f"{paper['title'][:70]}"
+        )
+    return selected
 
 
 def download_pdf(paper: dict) -> bool:
@@ -456,13 +714,18 @@ def load_incomplete_papers_from_excel() -> dict[str, dict]:
 def write_llm_output_json(
     papers_to_process: list[dict],
     fresh_downloaded_count: int = 0,
+    pending_total_count: int | None = None,
     feishu_msg: str = "",
 ):
     """输出当前待处理状态，供 Hermes agent 继续执行或安全重试。"""
+    if pending_total_count is None:
+        pending_total_count = len(papers_to_process)
     output = {
         "date": date.today().isoformat(),
         "new_count": fresh_downloaded_count,
         "pending_count": len(papers_to_process),
+        "pending_total_count": pending_total_count,
+        "daily_llm_limit": DAILY_LLM_LIMIT,
         "excel_file": str(EXCEL_FILE),
         "papers_dir": str(PAPERS_DIR),
         "new_papers": papers_to_process,
@@ -479,13 +742,17 @@ def sync_pending_state_from_excel(refresh_output_json: bool = True) -> list[dict
     可选同时刷新 new_papers.json，避免 agent 重试时继续读取旧待处理列表。
     """
     incomplete_excel_papers = load_incomplete_papers_from_excel()
-    papers_to_process = [
+    all_pending_papers = [
         incomplete_excel_papers[arxiv_id]
         for arxiv_id in sorted(incomplete_excel_papers)
     ]
-    save_pending_llm_ids({p["arxiv_id"] for p in papers_to_process})
+    papers_to_process = all_pending_papers[:DAILY_LLM_LIMIT]
+    save_pending_llm_ids({p["arxiv_id"] for p in all_pending_papers})
     if refresh_output_json:
-        write_llm_output_json(papers_to_process=papers_to_process)
+        write_llm_output_json(
+            papers_to_process=papers_to_process,
+            pending_total_count=len(all_pending_papers),
+        )
     return papers_to_process
 
 
@@ -494,9 +761,11 @@ def sync_pending_state_from_excel(refresh_output_json: bool = True) -> list[dict
 def main():
     if len(sys.argv) > 1 and sys.argv[1] == "--sync-pending-state":
         papers_to_process = sync_pending_state_from_excel(refresh_output_json=True)
+        pending_total = len(load_incomplete_papers_from_excel())
         print(
             f"[INFO] Pending LLM state synced from Excel | "
-            f"remaining={len(papers_to_process)} output_json={OUTPUT_JSON}"
+            f"next_batch={len(papers_to_process)} remaining_total={pending_total} "
+            f"output_json={OUTPUT_JSON}"
         )
         return
 
@@ -510,34 +779,42 @@ def main():
     crawled_ids_txt = load_crawled_ids()
     crawled_ids_excel = load_excel_ids()
     crawled_ids = crawled_ids_txt | crawled_ids_excel
-    pending_ids_file = load_pending_llm_ids()
     incomplete_excel_papers = load_incomplete_papers_from_excel()
-    pending_ids = pending_ids_file | set(incomplete_excel_papers.keys())
-    save_pending_llm_ids(pending_ids)
+    pending_ids_file = load_pending_llm_ids()
+    all_pending_ids = set(incomplete_excel_papers)
+    save_pending_llm_ids(all_pending_ids)
     print(
         f"[INFO] crawled IDs loaded | txt={len(crawled_ids_txt)} "
         f"excel={len(crawled_ids_excel)} merged={len(crawled_ids)}"
     )
     print(
         f"[INFO] pending LLM IDs loaded | file={len(pending_ids_file)} "
-        f"excel_incomplete={len(incomplete_excel_papers)} merged={len(pending_ids)}"
+        f"excel_incomplete={len(incomplete_excel_papers)}"
     )
 
-    # 搜索
-    keywords = load_search_keywords()
-    all_papers = search_arxiv_papers(keywords)
-    print(f"[INFO] Retrieved {len(all_papers)} papers from arxiv")
+    # 失败重试优先占用每日 LLM 预算，剩余名额才用于抓取新论文。
+    pending_batch_ids = sorted(all_pending_ids)[:DAILY_LLM_LIMIT]
+    remaining_new_slots = DAILY_LLM_LIMIT - len(pending_batch_ids)
+    print(
+        f"[INFO] Daily LLM budget | limit={DAILY_LLM_LIMIT} "
+        f"retry_slots={len(pending_batch_ids)} new_slots={remaining_new_slots}"
+    )
 
-    # 查重
-    new_papers = [p for p in all_papers if p["arxiv_id"] not in crawled_ids]
-    print(f"[INFO] {len(new_papers)} NEW papers")
+    topics = load_search_topics()
+    new_papers = search_and_select_new_papers(
+        topics=topics,
+        crawled_ids=crawled_ids,
+        limit=remaining_new_slots,
+    ) if remaining_new_slots else []
 
     # 下载 PDF + 更新 ID
     downloaded = []
-    for paper in new_papers:
+    for index, paper in enumerate(new_papers):
         ok = download_pdf(paper)
-        downloaded.append({**paper, "pdf_downloaded": ok})
-        time.sleep(REQUEST_INTERVAL)
+        if ok:
+            downloaded.append({**paper, "pdf_downloaded": True})
+        if index < len(new_papers) - 1:
+            time.sleep(REQUEST_INTERVAL)
 
     if downloaded:
         # 保存 Excel（summary_cn 和 affiliations 暂留空，等 LLM 填入）
@@ -550,12 +827,34 @@ def main():
 
         # 批量写入 crawled_ids
         save_crawled_ids_batch([p["arxiv_id"] for p in downloaded])
-        pending_ids |= {p["arxiv_id"] for p in downloaded}
 
     incomplete_excel_papers = load_incomplete_papers_from_excel()
-    papers_to_process = [incomplete_excel_papers[arxiv_id] for arxiv_id in sorted(pending_ids) if arxiv_id in incomplete_excel_papers]
-    unresolved_ids = {p["arxiv_id"] for p in papers_to_process}
-    save_pending_llm_ids(unresolved_ids)
+    all_pending_ids = set(incomplete_excel_papers)
+    save_pending_llm_ids(all_pending_ids)
+
+    # Preserve retry-first ordering, then append today's selected papers.
+    batch_ids = [
+        arxiv_id for arxiv_id in pending_batch_ids
+        if arxiv_id in incomplete_excel_papers
+    ]
+    batch_ids.extend(
+        paper["arxiv_id"] for paper in downloaded
+        if paper["arxiv_id"] in incomplete_excel_papers
+    )
+    batch_ids = list(dict.fromkeys(batch_ids))[:DAILY_LLM_LIMIT]
+    selected_metadata = {paper["arxiv_id"]: paper for paper in downloaded}
+    papers_to_process = []
+    for arxiv_id in batch_ids:
+        paper = incomplete_excel_papers[arxiv_id]
+        metadata = selected_metadata.get(arxiv_id, {})
+        papers_to_process.append({
+            **paper,
+            **{
+                key: metadata[key]
+                for key in ("topic_id", "topic_name", "selection_score")
+                if key in metadata
+            },
+        })
 
     if not papers_to_process:
         # 无新论文，且无待补全论文
@@ -563,6 +862,8 @@ def main():
             "date": date.today().isoformat(),
             "new_count": 0,
             "pending_count": 0,
+            "pending_total_count": 0,
+            "daily_llm_limit": DAILY_LLM_LIMIT,
             "new_papers": [],
             "papers_to_process": [],
             "feishu_msg": f"✅ 今日（{date.today().isoformat()}）未发现新的生成式推荐论文。",
@@ -577,12 +878,14 @@ def main():
     write_llm_output_json(
         papers_to_process=papers_to_process,
         fresh_downloaded_count=len(downloaded),
+        pending_total_count=len(all_pending_ids),
     )
 
     print(f"[INFO] Output JSON: {OUTPUT_JSON}")
     print(
         f"[INFO] fresh_downloaded={len(downloaded)} "
-        f"pending_llm={len(papers_to_process)}. Awaiting LLM summarization..."
+        f"llm_batch={len(papers_to_process)} "
+        f"pending_total={len(all_pending_ids)}. Awaiting LLM summarization..."
     )
 
     print("\n" + "=" * 60)
