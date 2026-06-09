@@ -22,3 +22,17 @@ feishu_output.json
 feishu_msg.md
 llm_results.json
 merged_llm_results.json
+
+# Hermes cron scratch files
+/_*.json
+/_*.py
+/check_*.py
+/debug_*.py
+/examine_*.py
+/extract_affiliations.py
+/extract_affiliations_*.py
+/process_batch*.py
+/read_batch*.py
+/test_*.py
+/update_papers.py
+/verify_results.py
