@@ -19,7 +19,7 @@ Use it when the user wants any of the following:
 
 The repository defaults to monitoring five frontier generative-recommendation topics. Topic queries and quotas are configured in `search_topics.json`.
 
-The monitor uses one direct `deepseek-chat` request per daily candidate batch to classify titles and abstracts before downloading PDFs. `DEEPSEEK_API_KEY` must be available in the environment or `~/.hermes/.env`.
+The monitor uses one direct `deepseek-v4-flash` request per daily candidate batch to classify titles and abstracts before downloading PDFs. `DEEPSEEK_API_KEY` must be available in the environment or `~/.hermes/.env`.
 
 Do not assume the current local folder name matches the remote repository name. Treat the GitHub repository name `hermes-arxiv-agent` as canonical for clone and deployment instructions.
 

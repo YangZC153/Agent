@@ -37,7 +37,7 @@ SCREENING_CANDIDATE_LIMIT = 50
 RECENT_PAPER_DAYS = 7
 REQUEST_INTERVAL = 3  # 秒
 DEEPSEEK_API_URL = "https://api.deepseek.com/v1/chat/completions"
-DEEPSEEK_SCREENING_MODEL = "deepseek-chat"
+DEEPSEEK_SCREENING_MODEL = "deepseek-v4-flash"
 
 EXCEL_COLUMNS = [
     "arxiv_id",
