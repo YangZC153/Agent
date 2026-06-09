@@ -76,6 +76,8 @@ function matchesKeyword(paper, keyword) {
     paper.authors,
     paper.affiliations,
     paper.categories,
+    paper.topic_name,
+    paper.code_open_source,
     paper.summary_cn,
     paper.abstract,
   ].join(" ").toLowerCase();
@@ -125,6 +127,12 @@ function renderCards(papers) {
       `\n作者: ${text(p.authors) || "-"}`;
 
     const tags = node.querySelector(".tags");
+    if (text(p.topic_name)) {
+      const topic = document.createElement("span");
+      topic.className = "tag topic-tag";
+      topic.textContent = text(p.topic_name);
+      tags.appendChild(topic);
+    }
     const cats = text(p.categories)
       .split(",")
       .map((x) => x.trim())
@@ -137,6 +145,17 @@ function renderCards(papers) {
     });
 
     node.querySelector(".affiliations").textContent = text(p.affiliations) || "未提供";
+    const codeStatus = node.querySelector(".code-status");
+    const isOpenSource = text(p.code_open_source) === "是";
+    codeStatus.textContent = isOpenSource ? "是" : "摘要未说明";
+    codeStatus.classList.toggle("open-source", isOpenSource);
+    const codeLink = node.querySelector(".code-link");
+    if (isOpenSource && text(p.code_url)) {
+      codeLink.href = text(p.code_url);
+      codeLink.hidden = false;
+    } else {
+      codeLink.hidden = true;
+    }
     node.querySelector(".summary-cn").textContent = text(p.summary_cn) || "未提供";
     node.querySelector(".abstract").textContent = text(p.abstract) || "未提供";
 

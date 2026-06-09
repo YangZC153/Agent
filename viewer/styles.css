@@ -299,6 +299,12 @@ input[type="date"] {
   color: #5c4a20;
 }
 
+.topic-tag {
+  background: #e0f2fe;
+  border-color: #7dd3fc;
+  color: #075985;
+}
+
 .section h3 {
   margin: 0 0 4px;
   font-size: 13px;
@@ -312,6 +318,31 @@ input[type="date"] {
   line-height: 1.6;
   white-space: pre-wrap;
   word-break: break-word;
+}
+
+.code-section p {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.code-status {
+  color: var(--muted);
+}
+
+.code-status.open-source {
+  color: #047857;
+  font-weight: 700;
+}
+
+.code-link {
+  color: #0f766e;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.code-link:hover {
+  text-decoration: underline;
 }
 
 details {

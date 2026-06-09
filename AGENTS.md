@@ -33,17 +33,20 @@ Daily flow:
 
 1. `python3 monitor.py`
 2. arXiv search returns the newest matching papers
-3. local metadata scoring selects at most 10 papers with five-topic quotas
-4. only selected PDFs are downloaded and appended/upserted into Excel
-5. Hermes/agent reads `new_papers.json`
-6. Hermes/agent extracts `affiliations` from PDFs and writes `summary_cn`
-7. Hermes/agent updates `papers_record.xlsx`
-8. `python3 viewer/build_data.py` rebuilds `viewer/papers_data.json`
-9. `python3 monitor.py --sync-pending-state` refreshes `pending_llm_ids.txt`
-10. optional: `bash scripts/publish_viewer.sh` pushes viewer changes and triggers GitHub Pages
+3. one low-cost DeepSeek call screens candidate titles and abstracts, classifies topics, and detects abstract-stated open-source code
+4. quota selection keeps at least one paper per available topic, then fills remaining slots in topic priority order up to 10 papers
+5. only selected PDFs are downloaded and appended/upserted into Excel
+6. Hermes/agent reads `new_papers.json`
+7. Hermes/agent extracts `affiliations` from PDFs and writes `summary_cn`
+8. Hermes/agent updates `papers_record.xlsx`
+9. `python3 viewer/build_data.py` rebuilds `viewer/papers_data.json`
+10. `python3 monitor.py --sync-pending-state` refreshes `pending_llm_ids.txt`
+11. optional: `bash scripts/publish_viewer.sh` pushes viewer changes and triggers GitHub Pages
 
 Important:
 
+- `topic_name`, `code_open_source`, and `code_url` are persisted in Excel and exported to the viewer
+- `code_open_source` is inferred only from the arXiv abstract; absence of evidence is stored as `摘要未说明`
 - affiliation extraction is now done by Hermes/agent during the cron workflow
 - old standalone extractor scripts were removed from the main repo flow
 - `crawled_date` means the latest processing/write-back date, not a permanent first-seen date

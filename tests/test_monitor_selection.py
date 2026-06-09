@@ -1,7 +1,13 @@
 import unittest
 from datetime import date
 
-from monitor import paper_is_recent, paper_matches_topic, select_topic_papers
+from monitor import (
+    build_screening_pool,
+    extract_json_object,
+    paper_is_recent,
+    paper_matches_topic,
+    select_topic_papers,
+)
 
 
 TOPICS = [
@@ -67,6 +73,23 @@ class SelectTopicPapersTests(unittest.TestCase):
 
         self.assertEqual([item["arxiv_id"] for item in selected], ["1.1", "3.1"])
 
+    def test_unused_topic_one_quota_rolls_forward_to_topic_two(self):
+        candidates = {
+            1: [paper("1.1", 1), paper("1.2", 1)],
+            2: [paper(f"2.{index}", 2) for index in range(10)],
+            3: [paper("3.1", 3)],
+            4: [paper("4.1", 4)],
+            5: [paper("5.1", 5)],
+        }
+
+        selected = select_topic_papers(candidates, TOPICS, limit=10)
+
+        counts = {
+            topic_id: sum(item["topic_id"] == topic_id for item in selected)
+            for topic_id in range(1, 6)
+        }
+        self.assertEqual(counts, {1: 2, 2: 5, 3: 1, 4: 1, 5: 1})
+
     def test_never_exceeds_limit(self):
         candidates = {
             topic_id: [paper(f"{topic_id}.{index}", topic_id) for index in range(8)]
@@ -106,6 +129,35 @@ class SelectTopicPapersTests(unittest.TestCase):
         self.assertFalse(
             paper_is_recent({"published_date": "2026-06-01"}, today=today)
         )
+
+    def test_open_source_papers_rank_first_within_topic(self):
+        closed = paper("1.closed", 1, published_date="2026-06-09")
+        closed["screening_score"] = 99
+        closed["code_open_source"] = "摘要未说明"
+        opened = paper("1.open", 1, published_date="2026-06-08")
+        opened["screening_score"] = 80
+        opened["code_open_source"] = "是"
+
+        selected = select_topic_papers({1: [closed, opened]}, TOPICS[:1], limit=1)
+
+        self.assertEqual(selected[0]["arxiv_id"], "1.open")
+
+    def test_screening_pool_deduplicates_cross_topic_candidates(self):
+        shared = paper("shared", 1)
+        pool = build_screening_pool(
+            {1: [shared], 2: [shared], 3: [], 4: [], 5: []},
+            TOPICS,
+        )
+
+        self.assertEqual(len(pool), 1)
+        self.assertEqual(pool[0]["candidate_topic_ids"], [1, 2])
+
+    def test_extract_json_object_accepts_code_fence(self):
+        payload = extract_json_object(
+            '```json\n{"papers":[{"arxiv_id":"1"}]}\n```'
+        )
+
+        self.assertEqual(payload["papers"][0]["arxiv_id"], "1")
 
 
 if __name__ == "__main__":
