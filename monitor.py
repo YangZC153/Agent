@@ -80,6 +80,25 @@ DEFAULT_SEARCH_TOPICS = [
     },
     {
         "id": 2,
+        "name": "Multimodal recommendation",
+        "target_quota": 1,
+        "query": (
+            "(all:multimodal AND "
+            "(all:recommendation OR all:recommender))"
+        ),
+        "ranking_terms": [
+            "multimodal recommendation",
+            "multimodal recommender",
+            "multimodal sequential recommendation",
+            "multimodal representation",
+        ],
+        "required_term_groups": [
+            ["multimodal"],
+            ["recommendation", "recommender"],
+        ],
+    },
+    {
+        "id": 3,
         "name": "Collaborative filtering + generative recommendation",
         "target_quota": 1,
         "query": (
@@ -106,7 +125,7 @@ DEFAULT_SEARCH_TOPICS = [
         ],
     },
     {
-        "id": 3,
+        "id": 4,
         "name": "LLM + recommendation",
         "target_quota": 1,
         "query": (
@@ -131,7 +150,7 @@ DEFAULT_SEARCH_TOPICS = [
         ],
     },
     {
-        "id": 4,
+        "id": 5,
         "name": "Agentic recommender systems",
         "target_quota": 1,
         "query": (
@@ -152,25 +171,6 @@ DEFAULT_SEARCH_TOPICS = [
         "required_term_groups": [
             ["agentic", "llm agent", "multi-agent", "recommendation agent", "recommender agent"],
             ["recommender system", "recommendation system", "recommendation agent", "recommender agent"],
-        ],
-    },
-    {
-        "id": 5,
-        "name": "Generative recommendation / retrieval",
-        "target_quota": 1,
-        "query": (
-            "(all:\"generative recommendation\" OR all:\"generative recommender\" "
-            "OR (all:\"generative retrieval\" AND "
-            "(all:recommendation OR all:recommender OR all:\"semantic id\")))"
-        ),
-        "ranking_terms": [
-            "generative recommendation",
-            "generative recommender",
-            "generative retrieval",
-            "semantic id",
-        ],
-        "required_term_groups": [
-            ["generative recommendation", "generative recommender", "generative retrieval"],
         ],
     },
 ]
