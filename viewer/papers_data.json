@@ -1,10 +1,27 @@
 {
-  "count": 59,
+  "count": 60,
   "crawled_date_min": "2026-06-09",
-  "crawled_date_max": "2026-06-10",
+  "crawled_date_max": "2026-06-11",
   "published_date_min": "2026-05-26",
   "published_date_max": "2026-06-09",
   "papers": [
+    {
+      "arxiv_id": "2606.11023",
+      "title": "Generative Archetype-Grounded Item Representations for Sequential Recommendation",
+      "authors": "Yifan Li, Jiahong Liu, Xinni Zhang, Hao Chen, Yankai Chen, Wenhao Yu, Jianting Chen, Irwin King",
+      "affiliations": "The Chinese University of Hong Kong, Hong Kong SAR, China; McGill University, Montreal, Canada; Tongji University, Shanghai, China",
+      "published_date": "2026-06-09",
+      "categories": "cs.IR, cs.CL, cs.LG",
+      "abstract": "Sequential recommendation aims to predict users' next interaction with items by analyzing their historical behavior. However, the limited quality of item representations remains a critical bottleneck. While pre-trained large language models (LLMs) can provide rich semantic representations, existing approaches only rely on static encoding of fixed attributes, overlooking the crucial role of target audiences in defining item identity. Moreover, the semantic space struggles to reflect actual user behavior, resulting in a significant gap between semantic representations and behavioral patterns. To address these limitations, we propose GenAIR, a general framework that empowers sequential recommendation with Generative Archetype-grounded Item Representations. Specifically, we first leverage an LLM to analyze item metadata and infer textual description of the Archetype, which represents the conceptual profile of the item's ideal target audience. We then extract the corresponding embeddings in a single forward pass. Further, to ground these generative archetypes in real-world behavior, we introduce a behavioral calibration objective, which explicitly incorporates behavioral signals from actual interactions. This objective adjusts the structure of the embedding space to reflect empirical patterns. GenAIR enables seamless integration with most existing models while maintaining high efficiency. Comprehensive experiments conducted on three real-world datasets demonstrate that GenAIR significantly improves the performance of various sequential recommendation models and consistently outperforms state-of-the-art baseline approaches. Implementation codes are available at https://github.com/AI-Santiago/GenAIR.",
+      "summary_cn": "本文提出GenAIR框架，利用大语言模型生成物品目标受众的原型描述以获得语义表示，并通过行为校准目标将语义表示与实际用户交互对齐。GenAIR可与现有序列推荐模型无缝集成，在三个数据集上显著提升推荐性能，超越当前最优方法。",
+      "pdf_filename": "2606.11023.pdf",
+      "crawled_date": "2026-06-11",
+      "notes": "",
+      "topic_name": "LLM + recommendation",
+      "code_open_source": "是",
+      "code_url": "https://github.com/AI-Santiago/GenAIR",
+      "pdf_url": "https://arxiv.org/pdf/2606.11023"
+    },
     {
       "arxiv_id": "2606.10357",
       "title": "Atomic Intent Reasoning: Bringing LLM Semantics to Industrial Cross-Domain Recommendations",
