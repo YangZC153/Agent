@@ -1,10 +1,27 @@
 {
-  "count": 60,
+  "count": 61,
   "crawled_date_min": "2026-06-09",
-  "crawled_date_max": "2026-06-11",
+  "crawled_date_max": "2026-06-12",
   "published_date_min": "2026-05-26",
-  "published_date_max": "2026-06-09",
+  "published_date_max": "2026-06-11",
   "papers": [
+    {
+      "arxiv_id": "2606.13140",
+      "title": "MIDSim: Simulating Multi-Channel Information Diffusion in Social Media with LLM-Powered Multi-Agent System",
+      "authors": "Lexi Liu, Qi Cao, Yuanhao Liu, Huawei Shen, Xueqi Cheng",
+      "affiliations": "State Key Laboratory of AI Safety, Institute of Computing Technology, Chinese Academy of Sciences, Beijing, China; University of Chinese Academy of Sciences, Beijing, China",
+      "published_date": "2026-06-11",
+      "categories": "cs.SI",
+      "abstract": "Information diffusion in social media shapes public opinion and collective behavior, making its modeling and simulation an important research problem. Existing studies have investigated information diffusion through epidemic-based, cascade-based, and point process models. However, they predominantly focus on diffusion through social links, overlooking other diffusion channels enabled by platform algorithms (e.g., recommender systems) and failing to capture user behavioral complexity. To address these limitations, we propose an LLM-powered multi-agent system for simulating multi-channel information diffusion, where large language models instantiate personalized user agents and the diffusion process jointly models social and algorithmic exposure streams. We further construct three real-world diffusion dataset spanning Sina Weibo, RedNote, and Twitter, containing diffusion records, user profiles, historical posts, and social relationships. Experimental results on real diffusion events show that our proposed framework realistically simulate macro diffusion phenomenon and generate diverse comment content, significantly outperforming baselines.",
+      "summary_cn": "本文提出MIDSim，一种基于LLM的多智能体系统，用于模拟社交媒体中多通道信息扩散。它同时建模社交链路和平台算法（推荐系统）驱动的信息暴露渠道，并利用个性化智能体模拟用户行为。在微博、RedNote和Twitter真实数据集上，MIDSim在宏观扩散模拟和评论生成方面显著优于基线方法。",
+      "pdf_filename": "2606.13140.pdf",
+      "crawled_date": "2026-06-12",
+      "notes": "",
+      "topic_name": "Agentic recommender systems",
+      "code_open_source": "摘要未说明",
+      "code_url": "",
+      "pdf_url": "https://arxiv.org/pdf/2606.13140"
+    },
     {
       "arxiv_id": "2606.11023",
       "title": "Generative Archetype-Grounded Item Representations for Sequential Recommendation",
