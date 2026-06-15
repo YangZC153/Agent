@@ -1,5 +1,5 @@
 {
-  "count": 65,
+  "count": 64,
   "crawled_date_min": "2026-06-09",
   "crawled_date_max": "2026-06-15",
   "published_date_min": "2026-05-26",
@@ -21,23 +21,6 @@
       "code_open_source": "摘要未说明",
       "code_url": "",
       "pdf_url": "https://arxiv.org/pdf/2606.14474"
-    },
-    {
-      "arxiv_id": "2606.11616",
-      "title": "DeMix: Debugging Training Data with Mixed Data Error Types by Investigating Influence Vectors",
-      "authors": "Jiale Deng, Yanyan Shen, Xiaogang Shi, Chai Junjun",
-      "affiliations": "Shanghai Jiao Tong University; ByteDance Inc.; Tiktok",
-      "published_date": "2026-06-10",
-      "categories": "cs.LG, cs.IR",
-      "abstract": "High-quality training data is essential for the success of machine learning models. However, real-world datasets often contain mixed types of errors arising from systematic flaws in data preparation pipelines, including label errors, feature errors, and spurious correlations. Effective debugging of training data requires both detecting erroneous samples and identifying their specific error types to enable targeted repair, yet existing data cleaning and attribution methods fail to adequately address this dual requirement. In this paper, we propose DeMix, a novel framework that simultaneously diagnoses erroneous samples and their error types. Our key insight is that different error types produce distinct patterns on model behavior. DeMix captures such error-specific patterns by influence vectors that characterize how each training sample affects model predictions across all validation samples. We formulate training data debugging as a multi-label classification problem where a classifier is developed to predict error types directly from influence vectors. We further introduce an intervention-based learning strategy that guides the classifier to capture invariant rationales specific to each error type, ensuring the learned classifier generalizes effectively. Empirical evaluations on 11 tasks across tabular data prediction, recommendation systems, and LLM alignment demonstrate that DeMix significantly outperforms state-of-the-art approaches, achieving a 22.61% improvement in data debugging F1-score and a 9.32% gain in task model performance after data repair. Code is available at: https://github.com/SJTU-DMTai/DeMix.",
-      "summary_cn": "本文提出DeMix框架，通过影响向量捕捉不同错误类型（标签错误、特征错误、虚假相关）对模型预测的差异化模式，将训练数据调试转化为多标签分类问题，并引入基于干预的学习策略提取不变特征。在表格数据预测、推荐系统和LLM对齐等11项任务中，数据调试F1分数提升22.61%，修复后模型性能提升9.32%。",
-      "pdf_filename": "2606.11616.pdf",
-      "crawled_date": "2026-06-15",
-      "notes": "",
-      "topic_name": "LLM + recommendation",
-      "code_open_source": "是",
-      "code_url": "https://github.com/SJTU-DMTai/DeMix",
-      "pdf_url": "https://arxiv.org/pdf/2606.11616"
     },
     {
       "arxiv_id": "2606.13001",
