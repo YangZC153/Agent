@@ -33,7 +33,7 @@ Daily flow:
 
 1. `python3 monitor.py`
 2. arXiv search returns the newest matching papers
-3. one low-cost DeepSeek call screens candidate titles and abstracts, classifies topics, and detects abstract-stated open-source code
+3. batched low-cost DeepSeek calls screen candidate titles and abstracts, reject papers where recommendation is only an incidental evaluation domain, classify topics, and detect abstract-stated open-source code
 4. quota selection keeps at least one paper per available topic, then fills remaining slots in topic priority order up to 10 papers
 5. only selected PDFs are downloaded and appended/upserted into Excel
 6. Hermes/agent reads `new_papers.json`
@@ -42,6 +42,11 @@ Daily flow:
 9. `python3 viewer/build_data.py` rebuilds `viewer/papers_data.json`
 10. `python3 monitor.py --sync-pending-state` refreshes `pending_llm_ids.txt`
 11. optional: `bash scripts/publish_viewer.sh` pushes viewer changes and triggers GitHub Pages
+
+Production scheduling on this server uses `daily_run.py` through a Hermes
+`no-agent` cron script. This avoids loading the full Hermes agent/tool prompt
+before the pipeline starts and prevents long initial streaming requests from
+failing with `Broken pipe`.
 
 Important:
 

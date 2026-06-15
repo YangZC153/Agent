@@ -21,6 +21,10 @@ The repository defaults to monitoring five frontier generative-recommendation to
 
 The monitor uses one direct `deepseek-v4-flash` request per daily candidate batch to classify titles and abstracts before downloading PDFs. `DEEPSEEK_API_KEY` must be available in the environment or `~/.hermes/.env`.
 
+For production reliability, prefer a Hermes `no-agent` cron that runs
+`daily_run.py` (or `scripts/run_daily_no_agent.sh`) and delivers stdout.
+This avoids loading a large agent/tool prompt before the pipeline starts.
+
 Do not assume the current local folder name matches the remote repository name. Treat the GitHub repository name `hermes-arxiv-agent` as canonical for clone and deployment instructions.
 
 ## Deployment Modes
