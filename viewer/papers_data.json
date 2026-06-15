@@ -1,10 +1,27 @@
 {
-  "count": 63,
+  "count": 64,
   "crawled_date_min": "2026-06-09",
-  "crawled_date_max": "2026-06-13",
+  "crawled_date_max": "2026-06-15",
   "published_date_min": "2026-05-26",
-  "published_date_max": "2026-06-11",
+  "published_date_max": "2026-06-12",
   "papers": [
+    {
+      "arxiv_id": "2606.14474",
+      "title": "Verifiable User Simulation for Search and Recommendation Systems",
+      "authors": "Chenglong Ma, Xinye Wanyan, Danula Hettiachchi, Ziqi Xu, Yongli Ren, Jeffrey Chan",
+      "affiliations": "RMIT University",
+      "published_date": "2026-06-12",
+      "categories": "cs.IR, cs.HC",
+      "abstract": "Large-language-model (LLM) based user simulation is increasingly adopted for evaluating search engines, recommender systems, and retrieval-augmented generation pipelines, yet most simulators remain opaque: it is difficult to determine why a simulated user made a particular choice or whether that choice is consistent with the intended user profile. Compounding this, recent research shows that LLMs can produce biased or discriminatory responses depending on user background characteristics such as language, education level, and cultural context, raising concerns about the equitable treatment of minority and disadvantaged groups. This half-day, in-person tutorial introduces a proposed design-and-audit framework that treats a user simulator as a verifiable engineering artefact composed of seven auditable components - structured Persona, task-aware Contract, matched human-vs-agent Execution, auditable Trace, persona-aligned Verification, structured Feedback, and a Refinement loop that updates personas and contracts. Through two hands-on mini-labs on recommendation-list evaluation and search-query formulation, participants will inspect simulator behaviour end-to-end, distinguish diagnostic discrepancy analysis from statistical validation, and apply checks for fidelity, credibility, and demographic bias. The tutorial targets information retrieval and recommender systems researchers and practitioners interested in user behaviour simulation and responsible AI.",
+      "summary_cn": "本教程提出一个可验证的用户模拟框架，将LLM模拟器视为由七个可审计组件（结构化人物、任务感知合约、匹配的人机执行、可审计追踪、人物验证、结构化反馈和更新循环）构成的工程制品。通过推荐列表评估和搜索查询构造两个动手实验，参与者学习端到端检查模拟器行为，区分诊断性差异分析与统计验证，并检验模拟的忠实性、可信度以及人口统计偏差，从而提升基于模拟的评估的可靠性和公平性。",
+      "pdf_filename": "2606.14474.pdf",
+      "crawled_date": "2026-06-15",
+      "notes": "",
+      "topic_name": "LLM + recommendation",
+      "code_open_source": "摘要未说明",
+      "code_url": "",
+      "pdf_url": "https://arxiv.org/pdf/2606.14474"
+    },
     {
       "arxiv_id": "2606.13001",
       "title": "CFALR: Collaborative Filtering-Augmented Large Language Model for Personalized Fashion Outfit Recommendation",
