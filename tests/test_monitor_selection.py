@@ -120,14 +120,14 @@ class SelectTopicPapersTests(unittest.TestCase):
         self.assertTrue(paper_matches_topic(relevant, topic))
         self.assertFalse(paper_matches_topic(unrelated, topic))
 
-    def test_recent_window_does_not_fill_budget_with_old_papers(self):
+    def test_recent_window_allows_backfill_but_not_stale_papers(self):
         today = date(2026, 6, 9)
 
         self.assertTrue(
-            paper_is_recent({"published_date": "2026-06-02"}, today=today)
+            paper_is_recent({"published_date": "2026-05-10"}, today=today)
         )
         self.assertFalse(
-            paper_is_recent({"published_date": "2026-06-01"}, today=today)
+            paper_is_recent({"published_date": "2026-05-09"}, today=today)
         )
 
     def test_open_source_papers_rank_first_within_topic(self):

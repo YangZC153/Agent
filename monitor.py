@@ -31,12 +31,18 @@ OUTPUT_JSON = BASE_DIR / "new_papers.json"   # 输出给 hermes agent 的中间�
 # arxiv API 配置
 ARXIV_API = "https://export.arxiv.org/api/query"
 DAILY_LLM_LIMIT = 10
-CANDIDATES_PER_TOPIC = 40
-SCREENING_CANDIDATES_PER_TOPIC = 20
-SCREENING_CANDIDATE_LIMIT = 100
+CANDIDATES_PER_TOPIC = 80
+SCREENING_CANDIDATES_PER_TOPIC = 30
+SCREENING_CANDIDATE_LIMIT = 150
 SCREENING_BATCH_SIZE = 20
-RECENT_PAPER_DAYS = 7
+RECENT_PAPER_DAYS = 30
 REQUEST_INTERVAL = 3  # 秒
+ARXIV_TIMEOUT = 90
+ARXIV_API_ATTEMPTS = 3
+ARXIV_USER_AGENT = (
+    "hermes-arxiv-agent/1.0 "
+    "(mailto:YangZC153@users.noreply.github.com)"
+)
 DEEPSEEK_API_URL = "https://api.deepseek.com/v1/chat/completions"
 DEEPSEEK_SCREENING_MODEL = "deepseek-v4-flash"
 
@@ -266,8 +272,40 @@ def search_arxiv_papers(query: str, max_results: int = CANDIDATES_PER_TOPIC) -> 
     }
 
     print(f"[INFO] Searching arxiv: {query}")
-    response = requests.get(ARXIV_API, params=params, timeout=30)
-    response.raise_for_status()
+    last_error = None
+    for attempt in range(1, ARXIV_API_ATTEMPTS + 1):
+        try:
+            response = requests.get(
+                ARXIV_API,
+                params=params,
+                headers={"User-Agent": ARXIV_USER_AGENT},
+                timeout=ARXIV_TIMEOUT,
+            )
+            response.raise_for_status()
+            break
+        except Exception as exc:
+            last_error = exc
+            if attempt >= ARXIV_API_ATTEMPTS:
+                raise
+            status_code = getattr(getattr(exc, "response", None), "status_code", None)
+            retry_after = getattr(getattr(exc, "response", None), "headers", {}).get(
+                "Retry-After"
+            )
+            if retry_after and retry_after.isdigit():
+                delay = int(retry_after)
+            elif status_code == 429:
+                delay = 60 * attempt
+            elif status_code in {500, 502, 503, 504}:
+                delay = 30 * attempt
+            else:
+                delay = REQUEST_INTERVAL * attempt
+            print(
+                f"[WARN] arXiv query failed on attempt "
+                f"{attempt}/{ARXIV_API_ATTEMPTS}: {exc}; retrying in {delay}s"
+            )
+            time.sleep(delay)
+    else:
+        raise RuntimeError(f"arXiv query failed: {last_error}")
 
     ns = {"a": "http://www.w3.org/2005/Atom"}
     root = ET.fromstring(response.content)
@@ -663,15 +701,23 @@ def search_and_select_new_papers(
         except Exception as e:
             print(f"[ERROR] Topic {topic_id} search failed: {e}")
             candidates = []
-        candidates_by_topic[topic_id] = [
+        recent_candidates = [
             paper for paper in candidates
+            if paper_is_recent(paper)
+        ]
+        uncrawled_recent_candidates = [
+            paper for paper in recent_candidates
             if paper["arxiv_id"] not in crawled_ids
-            and paper_is_recent(paper)
-            and paper_matches_topic(paper, topic)
+        ]
+        candidates_by_topic[topic_id] = [
+            paper for paper in uncrawled_recent_candidates
+            if paper_matches_topic(paper, topic)
         ]
         print(
             f"[INFO] Topic {topic_id} candidates | "
-            f"retrieved={len(candidates)} new={len(candidates_by_topic[topic_id])}"
+            f"retrieved={len(candidates)} recent{RECENT_PAPER_DAYS}={len(recent_candidates)} "
+            f"uncrawled={len(uncrawled_recent_candidates)} "
+            f"matched={len(candidates_by_topic[topic_id])}"
         )
         if index < len(topics) - 1:
             time.sleep(REQUEST_INTERVAL)
