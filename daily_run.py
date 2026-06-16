@@ -151,16 +151,25 @@ def update_excel(results: dict[str, dict]) -> None:
     workbook.save(monitor.EXCEL_FILE)
 
 
-def format_report(papers: list[dict], results: dict[str, dict]) -> str:
+def format_report(
+    papers: list[dict],
+    results: dict[str, dict],
+    failures: list[str] | None = None,
+    published: bool = True,
+) -> str:
+    failures = failures or []
     if not papers:
         return f"今日（{monitor.date.today().isoformat()}）未发现新的相关论文。"
 
+    successful_papers = [
+        paper for paper in papers if paper["arxiv_id"] in results
+    ]
     lines = [
         f"论文日报 | {monitor.date.today().isoformat()}",
-        f"共发现 {len(papers)} 篇新论文",
+        f"共发现 {len(papers)} 篇新论文，已完成总结 {len(successful_papers)} 篇",
         "",
     ]
-    for index, paper in enumerate(papers, 1):
+    for index, paper in enumerate(successful_papers, 1):
         result = results[paper["arxiv_id"]]
         lines.extend([
             f"{index}. {paper['title']}",
@@ -177,7 +186,16 @@ def format_report(papers: list[dict], results: dict[str, dict]) -> str:
             f"中文总结: {result['summary_cn']}",
             "",
         ])
-    lines.append("完整列表: https://yangzc153.github.io/Agent/")
+    if failures:
+        lines.extend([
+            "以下论文处理失败，将在下次自动重试：",
+            *failures,
+            "",
+        ])
+    if published:
+        lines.append("完整列表: https://yangzc153.github.io/Agent/")
+    else:
+        lines.append("网页暂未发布本次结果，避免展示未补全的论文记录。")
     return "\n".join(lines).strip()
 
 
@@ -222,10 +240,7 @@ def main() -> int:
             monitor.sync_pending_state_from_excel(refresh_output_json=True)
 
         if failures:
-            print(
-                "论文日报处理未完全成功，将在下次自动重试。\n"
-                + "\n".join(failures)
-            )
+            print(format_report(papers, results, failures, published=False))
             return 0
 
         run_command([
