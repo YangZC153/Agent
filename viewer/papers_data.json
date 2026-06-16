@@ -1,10 +1,27 @@
 {
-  "count": 64,
+  "count": 65,
   "crawled_date_min": "2026-06-09",
-  "crawled_date_max": "2026-06-15",
+  "crawled_date_max": "2026-06-16",
   "published_date_min": "2026-05-26",
-  "published_date_max": "2026-06-12",
+  "published_date_max": "2026-06-13",
   "papers": [
+    {
+      "arxiv_id": "2606.15330",
+      "title": "OneBar: An End-to-End Content-Grounded Generative Query Recommendation Framework for E-Commerce Video Feeds",
+      "authors": "Yao Tang, Ying Yang, Ben Chen, Yufei Ma, Zihan Liang, Chenyi Lei, Wenwu Ou, Jian Liu",
+      "affiliations": "Zhejiang University; Kuaishou Technology",
+      "published_date": "2026-06-13",
+      "categories": "cs.IR",
+      "abstract": "Short-video platforms now expose clickable search entries beneath the video player, enabling users to easily express content-induced search intent. However, conventional query recommendation systems on short-video platforms suffer from latency constraints and objective misalignment, while recent generative approaches struggle with noisy content-side metadata and preference drift. To address these issues, we propose OneBar, an end-to-end generative framework for real-time query recommendation for E-Commerce video feeds. OneBar features three key innovations: (1) a collaborative-multimodal intent grounding module that fuses multimodal video understanding and behavior-derived collaborative anchors; (2) a Unified End-to-End architecture equipped with a prompt-compression mechanism for efficient online serving; and (3) a progressive preference learning strategy for efficient preference-internalization, which internalizes hierarchical behavior preferences into the generative policy, eliminating the need for a separately trained reward model. Compared with online base, OneBar increases Query Exposure by 16.91\\% and Query Click by 18.68\\%, while maintaining a slight Query CTR gain of 0.19\\%. The additional search traffic further contributes to 20.36\\% more guided orders and 21.67\\% higher GMV.",
+      "summary_cn": "OneBar是一个面向电商视频流的端到端生成式查询推荐框架，通过协作多模态意图定位模块融合视频理解与行为锚点，采用统一端到端架构和提示压缩机制实现低延迟在线服务，并利用渐进式偏好学习策略内化层级行为偏好，无需单独奖励模型。在快手平台上线后，查询曝光提升16.91%，查询点击提升18.68%，引导订单增加20.36%，GMV提升21.67%。",
+      "pdf_filename": "2606.15330.pdf",
+      "crawled_date": "2026-06-16",
+      "notes": "",
+      "topic_name": "Multimodal generative recommendation",
+      "code_open_source": "摘要未说明",
+      "code_url": "",
+      "pdf_url": "https://arxiv.org/pdf/2606.15330"
+    },
     {
       "arxiv_id": "2606.14474",
       "title": "Verifiable User Simulation for Search and Recommendation Systems",
