@@ -33,6 +33,21 @@ def log_event(message: str) -> None:
         handle.write(f"[{timestamp}] {message}\n")
 
 
+class LogCapture:
+    def __init__(self, buffer: io.StringIO):
+        self.buffer = buffer
+        RUN_LOG.parent.mkdir(parents=True, exist_ok=True)
+
+    def write(self, text: str) -> int:
+        self.buffer.write(text)
+        with RUN_LOG.open("a", encoding="utf-8") as handle:
+            handle.write(text)
+        return len(text)
+
+    def flush(self) -> None:
+        return None
+
+
 def extract_first_pages(pdf_path: str, pages: int = 2) -> str:
     document = fitz.open(pdf_path)
     try:
@@ -211,9 +226,10 @@ def format_report(
 
 def run_monitor() -> dict:
     buffer = io.StringIO()
-    with contextlib.redirect_stdout(buffer):
+    log_event("monitor.py output begins")
+    with contextlib.redirect_stdout(LogCapture(buffer)):
         monitor.main()
-    log_event("monitor.py output:\n" + buffer.getvalue().strip())
+    log_event("monitor.py output ends")
     return json.loads(monitor.OUTPUT_JSON.read_text(encoding="utf-8"))
 
 

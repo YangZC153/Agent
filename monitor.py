@@ -37,8 +37,8 @@ SCREENING_CANDIDATE_LIMIT = 125
 SCREENING_BATCH_SIZE = 20
 RECENT_PAPER_DAYS = 30
 REQUEST_INTERVAL = 3  # 秒
-ARXIV_TIMEOUT = 90
-ARXIV_API_ATTEMPTS = 3
+ARXIV_TIMEOUT = 30
+ARXIV_API_ATTEMPTS = 2
 ARXIV_USER_AGENT = (
     "hermes-arxiv-agent/1.0 "
     "(mailto:YangZC153@users.noreply.github.com)"
@@ -294,9 +294,9 @@ def search_arxiv_papers(query: str, max_results: int = CANDIDATES_PER_TOPIC) -> 
             if retry_after and retry_after.isdigit():
                 delay = int(retry_after)
             elif status_code == 429:
-                delay = 60 * attempt
+                delay = 20 * attempt
             elif status_code in {500, 502, 503, 504}:
-                delay = 30 * attempt
+                delay = 10 * attempt
             else:
                 delay = REQUEST_INTERVAL * attempt
             print(
