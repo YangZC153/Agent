@@ -8,6 +8,7 @@ import io
 import json
 import subprocess
 import time
+from datetime import datetime
 from pathlib import Path
 
 import fitz
@@ -20,7 +21,16 @@ import monitor
 PROJECT_DIR = Path(__file__).resolve().parent
 MODEL = "deepseek-v4-flash"
 MAX_PDF_TEXT_CHARS = 12000
-API_ATTEMPTS = 3
+API_ATTEMPTS = 2
+DEEPSEEK_TIMEOUT = 120
+RUN_LOG = PROJECT_DIR / "logs" / f"daily_run_{monitor.date.today().isoformat()}.log"
+
+
+def log_event(message: str) -> None:
+    RUN_LOG.parent.mkdir(parents=True, exist_ok=True)
+    timestamp = datetime.now().isoformat(timespec="seconds")
+    with RUN_LOG.open("a", encoding="utf-8") as handle:
+        handle.write(f"[{timestamp}] {message}\n")
 
 
 def extract_first_pages(pdf_path: str, pages: int = 2) -> str:
@@ -63,7 +73,7 @@ def call_deepseek_json(prompt: str) -> dict:
                     "max_tokens": 1800,
                     "stream": False,
                 },
-                timeout=180,
+                timeout=DEEPSEEK_TIMEOUT,
             )
             response.raise_for_status()
             content = response.json()["choices"][0]["message"]["content"]
@@ -200,13 +210,15 @@ def format_report(
 
 
 def run_monitor() -> dict:
-    with contextlib.redirect_stdout(io.StringIO()):
+    buffer = io.StringIO()
+    with contextlib.redirect_stdout(buffer):
         monitor.main()
+    log_event("monitor.py output:\n" + buffer.getvalue().strip())
     return json.loads(monitor.OUTPUT_JSON.read_text(encoding="utf-8"))
 
 
 def run_command(command: list[str]) -> None:
-    subprocess.run(
+    result = subprocess.run(
         command,
         cwd=PROJECT_DIR,
         check=True,
@@ -215,23 +227,30 @@ def run_command(command: list[str]) -> None:
         text=True,
         timeout=900,
     )
+    log_event(f"command {' '.join(command)} output:\n{result.stdout.strip()}")
 
 
 def main() -> int:
+    log_event("daily_run started")
     try:
         payload = run_monitor()
         papers = payload.get("papers_to_process", [])[:monitor.DAILY_LLM_LIMIT]
+        log_event(f"papers_to_process={len(papers)}")
         if not papers:
             print(format_report([], {}))
+            log_event("daily_run finished: no papers")
             return 0
 
         results = {}
         failures = []
         for paper in papers:
             try:
+                log_event(f"processing {paper['arxiv_id']}")
                 results[paper["arxiv_id"]] = process_paper(paper)
+                log_event(f"processed {paper['arxiv_id']}")
             except Exception as exc:
                 failures.append(f"{paper['arxiv_id']}: {exc}")
+                log_event(f"failed {paper['arxiv_id']}: {exc}")
 
         if results:
             update_excel(results)
@@ -241,6 +260,7 @@ def main() -> int:
 
         if failures:
             print(format_report(papers, results, failures, published=False))
+            log_event("daily_run finished with partial failures")
             return 0
 
         run_command([
@@ -249,8 +269,10 @@ def main() -> int:
         ])
         run_command(["bash", "scripts/publish_viewer.sh"])
         print(format_report(papers, results))
+        log_event("daily_run finished successfully")
         return 0
     except Exception as exc:
+        log_event(f"daily_run failed: {type(exc).__name__}: {exc}")
         print(f"论文日报运行失败，将在下次自动重试。\n{type(exc).__name__}: {exc}")
         return 0
 
