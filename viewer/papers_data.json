@@ -1,10 +1,27 @@
 {
-  "count": 74,
+  "count": 75,
   "crawled_date_min": "2026-06-09",
-  "crawled_date_max": "2026-06-17",
+  "crawled_date_max": "2026-06-18",
   "published_date_min": "2026-05-21",
   "published_date_max": "2026-06-16",
   "papers": [
+    {
+      "arxiv_id": "2605.23310",
+      "title": "From Head to Tail: Asymmetric Knowledge Transfer in Long-tail Recommendation with Generative Semantic IDs",
+      "authors": "Chenyi Yan, Ruocong Tang, Xing Fang, Yang Huang, He Guo, Jing Wang",
+      "affiliations": "Alibaba Group, Hangzhou, China; Beijing University, Beijing, China",
+      "published_date": "2026-05-22",
+      "categories": "cs.IR",
+      "abstract": "Long-tail recommendation in real-world e-commerce platforms remains challenging due to severe data imbalance. Existing methods often struggle to combine content-based multimodal features with collaborative signals. Many of these methods also ignore an important asymmetry in knowledge transfer between head and tail IDs: noisy signals from tail IDs can hurt representation learning for head IDs. This paper presents AKT-Rec, a framework for Asymmetric Knowledge Transfer in long-tail Recommendation that uses LLM-generated semantic IDs. AKT-Rec uses Multimodal LLMs (MLLMs) with supervised fine-tuning to align content representations with collaborative information for both items and users, producing semantic representations. It then discretizes these representations into semantic IDs with a Residual-Quantized VAE (RQ-VAE), which yields semantic clusters of similar entities. AKT-Rec has two main components: (1) Cluster-Guided Adaptive Embedding, which decomposes each ID representation into a cluster-level embedding that captures shared semantics and an individual embedding. Through an asymmetric contrastive objective and an activity-aware gating mechanism, this module directs knowledge transfer from head to tail IDs. (2) Hierarchical Feature Aggregation, which builds parallel feature views and adaptively fuses them to optimize predictions for samples with varying activity levels. Extensive experiments on a large-scale industrial dataset and online A/B testing on the Alibaba Tmall platform demonstrate the effectiveness of AKT-Rec. AKT-Rec improves offline performance by 0.35% in AUC and 1.53% in GAUC, outperforming several competitive baselines. In online A/B testing, AKT-Rec achieves a 2.76% increase in CTR and a 3.47% increase in GMV, validating its utility in real-world production environments.",
+      "summary_cn": "AKT-Rec 框架利用多模态大语言模型和残差量化变分自编码器生成语义ID，将用户和商品表示为簇级与个体嵌入，通过非对称对比学习实现从头部到尾部实体的知识迁移，并设计层次化特征聚合模块。在阿里巴巴天猫平台的大规模数据集和在线A/B测试中，离线AUC提升0.35%、GAUC提升1.53%，在线CTR提升2.76%、GMV提升3.47%，有效缓解了长尾推荐中的数据不平衡问题。",
+      "pdf_filename": "2605.23310.pdf",
+      "crawled_date": "2026-06-18",
+      "notes": "",
+      "topic_name": "Multimodal generative recommendation",
+      "code_open_source": "摘要未说明",
+      "code_url": "",
+      "pdf_url": "https://arxiv.org/pdf/2605.23310"
+    },
     {
       "arxiv_id": "2606.17707",
       "title": "Do Generative Recommenders Deepen the Information Cocoon? A Closed-Loop Simulation with LLM-powered User Simulators",
