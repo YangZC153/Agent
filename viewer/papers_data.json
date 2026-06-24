@@ -1,10 +1,27 @@
 {
-  "count": 79,
+  "count": 80,
   "crawled_date_min": "2026-06-09",
-  "crawled_date_max": "2026-06-20",
+  "crawled_date_max": "2026-06-24",
   "published_date_min": "2026-05-21",
-  "published_date_max": "2026-06-17",
+  "published_date_max": "2026-06-22",
   "papers": [
+    {
+      "arxiv_id": "2606.23291",
+      "title": "URecJPQ: Memory-efficient Multimodal Recommendation Models through RecJPQ in Large-Scale Scenarios",
+      "authors": "Giuseppe Spillo, Zixuan Yi, Aleksandr Petrov, Cataldo Musto, Craig Macdonald, Iadh Ounis",
+      "affiliations": "University of Bari Aldo Moro, Bari, Italy; University of Glasgow, Glasgow, United Kingdom; Spotify, Glasgow, United Kingdom",
+      "published_date": "2026-06-22",
+      "categories": "cs.IR",
+      "abstract": "Training state-of-the-art recommendation models on large-scale industrial datasets can be a challenging task due to the high number of users and items which are typically represented through ID embeddings. Such embeddings typically require a large amount of memory resources, which are not always available. This problem is further exacerbated in multimodal recommendation, in which multimodal item features generally improve recommendation performance, but require more resources to encode. In this paper, we introduce URecJPQ, a Joint Product Quantization method specifically designed for large-scale and multimodal top-k recommendation tasks, in which the vast number of users and items, combined with the available modalities, further increases the memory demands for the computation. The core idea is to represent each user/item not as a fully learned, unique embedding, but rather as a concatenation of shared learned sub-embeddings, thereby significantly reducing the total number of trainable parameters. Our experiments on three widely-used datasets across different domains (movies, baby and sports products) show that URecJPQ can be effectively applied to multimodal recommendation settings. In large scale scenarios, we observe a substantial reduction in checkpoint sizes and the number of trainable parameters (ranging from 86% to 98%, and 98% to 99%, respectively), with only a marginal decrease in accuracy (8.5% on recall and 16% on NDCG, on average), and, in some cases, even performance improvements (up to 85%), as in the baby products domain. Our codebase is available at https://anonymous.4open.science/r/large_mmrecjpq-839B/README.md.",
+      "summary_cn": "提出URecJPQ方法，通过联合乘积量化将用户和物品表示为共享子嵌入的拼接，大幅减少内存占用和可训练参数。在三个多模态数据集上，模型规模降低86%-99%，准确率仅轻微下降（召回率平均降8.5%，NDCG降16%），部分领域性能提升高达85%。",
+      "pdf_filename": "2606.23291.pdf",
+      "crawled_date": "2026-06-24",
+      "notes": "",
+      "topic_name": "Multimodal recommendation",
+      "code_open_source": "是",
+      "code_url": "https://anonymous.4open.science/r/large_mmrecjpq-839B/README.md",
+      "pdf_url": "https://arxiv.org/pdf/2606.23291"
+    },
     {
       "arxiv_id": "2606.19627",
       "title": "VCG: A Multimodal Retrieval Framework for E-Commerce Video Feeds under Extreme Cold-Start Conditions",
