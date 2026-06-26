@@ -6,8 +6,10 @@ from monitor import (
     extract_json_object,
     paper_is_recent,
     paper_matches_topic,
+    search_and_select_new_papers,
     select_topic_papers,
 )
+import monitor
 
 
 TOPICS = [
@@ -158,6 +160,90 @@ class SelectTopicPapersTests(unittest.TestCase):
         )
 
         self.assertEqual(payload["papers"][0]["arxiv_id"], "1")
+
+    def test_search_retries_failed_topic_before_screening(self):
+        topics = [{
+            "id": 1,
+            "name": "T1",
+            "target_quota": 1,
+            "query": "q1",
+            "ranking_terms": ["topic one"],
+        }]
+        calls = {"q1": 0}
+        original_search = monitor.search_arxiv_papers
+        original_screen = monitor.screen_candidates_with_deepseek
+        original_sleep = monitor.time.sleep
+        original_retry_rounds = monitor.ARXIV_FAILED_TOPIC_RETRY_ROUNDS
+        original_retry_delay = monitor.ARXIV_FAILED_TOPIC_RETRY_DELAY
+        try:
+            monitor.ARXIV_FAILED_TOPIC_RETRY_ROUNDS = 1
+            monitor.ARXIV_FAILED_TOPIC_RETRY_DELAY = 0
+            monitor.time.sleep = lambda _seconds: None
+
+            def fake_search(query):
+                calls[query] += 1
+                if calls[query] == 1:
+                    raise RuntimeError("temporary arXiv error")
+                return [paper("retry.1", 1)]
+
+            def fake_screen(candidates, _topics):
+                return [
+                    {
+                        **candidate,
+                        "topic_id": 1,
+                        "topic_name": "T1",
+                        "screening_score": 90,
+                        "code_open_source": "摘要未说明",
+                        "code_url": "",
+                    }
+                    for candidate in candidates
+                ]
+
+            monitor.search_arxiv_papers = fake_search
+            monitor.screen_candidates_with_deepseek = fake_screen
+
+            selected = search_and_select_new_papers(topics, set(), limit=10)
+
+            self.assertEqual([item["arxiv_id"] for item in selected], ["retry.1"])
+            self.assertEqual(calls["q1"], 2)
+            self.assertEqual(monitor.LAST_SEARCH_FAILURES, [])
+        finally:
+            monitor.search_arxiv_papers = original_search
+            monitor.screen_candidates_with_deepseek = original_screen
+            monitor.time.sleep = original_sleep
+            monitor.ARXIV_FAILED_TOPIC_RETRY_ROUNDS = original_retry_rounds
+            monitor.ARXIV_FAILED_TOPIC_RETRY_DELAY = original_retry_delay
+
+    def test_search_failure_is_reported_after_retry_exhaustion(self):
+        topics = [{
+            "id": 1,
+            "name": "T1",
+            "target_quota": 1,
+            "query": "q1",
+            "ranking_terms": ["topic one"],
+        }]
+        original_search = monitor.search_arxiv_papers
+        original_sleep = monitor.time.sleep
+        original_retry_rounds = monitor.ARXIV_FAILED_TOPIC_RETRY_ROUNDS
+        original_retry_delay = monitor.ARXIV_FAILED_TOPIC_RETRY_DELAY
+        try:
+            monitor.ARXIV_FAILED_TOPIC_RETRY_ROUNDS = 1
+            monitor.ARXIV_FAILED_TOPIC_RETRY_DELAY = 0
+            monitor.time.sleep = lambda _seconds: None
+            monitor.search_arxiv_papers = lambda _query: (_ for _ in ()).throw(
+                RuntimeError("persistent arXiv error")
+            )
+
+            selected = search_and_select_new_papers(topics, set(), limit=10)
+
+            self.assertEqual(selected, [])
+            self.assertEqual(len(monitor.LAST_SEARCH_FAILURES), 1)
+            self.assertEqual(monitor.LAST_SEARCH_FAILURES[0]["topic_id"], 1)
+        finally:
+            monitor.search_arxiv_papers = original_search
+            monitor.time.sleep = original_sleep
+            monitor.ARXIV_FAILED_TOPIC_RETRY_ROUNDS = original_retry_rounds
+            monitor.ARXIV_FAILED_TOPIC_RETRY_DELAY = original_retry_delay
 
 
 if __name__ == "__main__":

@@ -1,4 +1,4 @@
-## 任务：每天自动监控 arXiv 论文并推送飞书
+## 任务：每天自动监控 arXiv 论文并推送飞书，随后推送每日投资建议
 
 ### 执行约束
 - 这是无人值守定时任务，不要安装 Node.js、Chromium、系统包或 Python 包，不要调用浏览器工具
@@ -10,7 +10,10 @@
 - 只处理 `papers_to_process`，其数量最多为 10；不得自行搜索、追加或总结列表之外的论文
 - `code_open_source` 和 `code_url` 只依据 arXiv 摘要生成；不要读取 PDF 后擅自修改这两个字段
 - `monitor.py` 下载论文可能需要数分钟，执行该命令时允许最多 15 分钟
-- 全部步骤成功后立即输出最终飞书消息，不再执行额外检查或分析
+- 论文流程完成后先输出论文日报消息；随后执行投资建议脚本并输出第二条独立飞书消息
+- 投资建议消息只允许包含 `推荐投资金额` 和 `推荐原因说明` 两项
+- 投资建议消息不得透露投资对象、行情对象、数据来源、网址链接、具体指数、基金、ETF、平台或代码
+- 投资建议消息不得写入 `viewer/papers_data.json`，不得发布到 GitHub Pages；GitHub Pages 只展示论文 viewer 数据
 
 ### 第一步：执行 Python 脚本
 cd 到项目根目录后，用 python3 运行：
@@ -20,7 +23,8 @@ cd /path/to/hermes-arxiv-agent && python3 monitor.py
 
 ### 第二步：判断是否有新论文
 运行完毕后检查脚本输出：
-- 如果包含 `No new papers`，直接回复：`✅ 今日（YYYY-MM-DD）未发现新的论文。`
+- 如果包含 `No new papers`，先回复：`✅ 今日（YYYY-MM-DD）未发现新的论文。`，然后跳到第九步生成投资建议消息
+- 如果 `new_papers.json` 中 `search_failures` 非空且没有待处理论文，不要回复“未发现新论文”；改为说明“今日 arXiv 检索未完全成功，部分主题因超时或限流没有返回结果”，然后跳到第九步生成投资建议消息
 - 如果有 `LLM_SUMMARIZATION_REQUIRED` 部分，进入第三步。
 
 ### 第三步：读取 JSON 并完成 LLM 信息补全
@@ -89,7 +93,7 @@ cd /path/to/hermes-arxiv-agent && bash scripts/publish_viewer.sh
 - push 到你自己的 GitHub fork 后会触发 GitHub Actions 更新 GitHub Pages
 - 当前仓库必须是你自己的 fork，或 `PUBLISH_REMOTE` 必须明确指向你自己的可写远端
 
-### 第八步：构建飞书 Markdown 消息
+### 第八步：构建并输出论文飞书 Markdown 消息
 输出格式：
 ```
 📚 **论文日报** | YYYY-MM-DD
@@ -98,4 +102,23 @@ cd /path/to/hermes-arxiv-agent && bash scripts/publish_viewer.sh
 完整列表：https://yangzc153.github.io/Agent/
 PDF 已下载至 papers/，记录已更新至 papers_record.xlsx，网站数据已更新至 viewer/papers_data.json。
 ```
-**重要：最终回复只输出飞书消息文本，不要输出其他说明。**
+输出论文日报后，继续执行第九步；不要把投资建议追加到论文日报正文里。
+
+### 第九步：生成并输出第二条投资建议消息
+在项目根目录执行：
+```bash
+cd /path/to/hermes-arxiv-agent && python3 -m investment_advice.dca
+```
+
+将脚本输出原样作为第二条独立飞书消息，格式只能是：
+```text
+推荐投资金额：xxx 元
+推荐原因说明：xxxxxxxx
+```
+
+要求：
+- 投资建议消息必须在论文日报消息之后输出
+- 投资建议消息不要添加标题、链接、数据源、投资对象、行情对象或额外解释
+- 如果投资建议脚本失败，仍只输出两行脱敏兜底消息
+
+**重要：最终只输出论文日报消息和第二条投资建议消息，不要输出其他说明。**

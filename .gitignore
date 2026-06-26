@@ -15,6 +15,8 @@ new_papers.json
 pending_llm_ids.txt
 cronjob_prompt.generated.txt
 .deploy_mode
+investment_advice/investment_state.json
+investment_advice/investment_state_corrupted_*.json
 
 crawled_ids.txt
 

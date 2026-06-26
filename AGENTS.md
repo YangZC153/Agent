@@ -11,6 +11,7 @@ It is designed to:
 - use Hermes/LLM to extract author affiliations and generate `summary_cn`
 - write results back to `papers_record.xlsx`
 - send a daily Feishu report
+- send a second, separate daily investment advice message after the paper report
 - provide a paper viewer website, either locally or via GitHub Pages
 
 The default research topics and quotas are configured in `search_topics.json`.
@@ -28,6 +29,8 @@ Persistent data:
 - `new_papers.json`: intermediate file for Hermes/agent processing
 - `pending_llm_ids.txt`: papers still missing `affiliations` or `summary_cn`
 - `viewer/papers_data.json`: static website data built from the Excel file
+- `investment_advice/investment_state.json`: local investment suggestion state, ignored by git
+- `logs/investment_dca.log`: investment suggestion calculation log
 
 Daily flow:
 
@@ -42,11 +45,18 @@ Daily flow:
 9. `python3 viewer/build_data.py` rebuilds `viewer/papers_data.json`
 10. `python3 monitor.py --sync-pending-state` refreshes `pending_llm_ids.txt`
 11. optional: `bash scripts/publish_viewer.sh` pushes viewer changes and triggers GitHub Pages
+12. `python3 -m investment_advice.dca` computes the daily investment advice
+13. the cron output sends the arXiv paper report first, then a separate investment advice message
 
 Production scheduling on this server uses `daily_run.py` through a Hermes
 `no-agent` cron script. This avoids loading the full Hermes agent/tool prompt
 before the pipeline starts and prevents long initial streaming requests from
 failing with `Broken pipe`.
+
+In no-agent cron mode, `daily_run.py` sends the arXiv report and investment
+advice as two separate Feishu messages through `hermes send`, then prints
+`[SILENT]` so the cron stdout delivery does not merge them back into one
+message.
 
 Important:
 
@@ -55,6 +65,11 @@ Important:
 - affiliation extraction is now done by Hermes/agent during the cron workflow
 - old standalone extractor scripts were removed from the main repo flow
 - `crawled_date` means the latest processing/write-back date, not a permanent first-seen date
+- investment advice is a suggestion only; it never executes trades
+- investment advice output must contain only `推荐投资金额` and `推荐原因说明`
+- investment advice output must not reveal the investment object, market object, data source, URLs, platform, code, index, fund, or ETF names
+- investment advice must not be written to `viewer/papers_data.json` or published on GitHub Pages; Pages only shows paper viewer data
+- `DAILY_RUN_DIRECT_SEND=1` enables two separate Feishu sends from `daily_run.py`; `DAILY_RUN_SEND_TARGET` defaults to `feishu`
 
 ## Deployment Modes
 
@@ -174,6 +189,12 @@ Manual Pages publish:
 bash scripts/publish_viewer.sh
 ```
 
+Generate investment advice only:
+
+```bash
+python3 -m investment_advice.dca
+```
+
 ## What To Check First In A New Session
 
 When starting a new work session on this repo, check these first:
@@ -183,12 +204,14 @@ When starting a new work session on this repo, check these first:
 3. whether the task is about local mode or GitHub Pages mode
 4. whether `pending_llm_ids.txt` is empty
 5. whether the user wants code changes, cron updates, or only data publishing
+6. whether the task touches the investment advice module and its local state
 
 Useful questions to answer early:
 
 - Is this a deployment problem, a data-processing problem, or a viewer/UI problem?
 - Is the user working in local mode or GitHub Pages mode?
 - If publishing is involved, does `origin` point to the user's own fork?
+- If investment advice is involved, is the request about config, state, output wording, or the daily cron flow?
 
 ## Current Conventions
 
@@ -210,6 +233,7 @@ Recent important changes:
 - SSH is now the recommended Git remote mode for Pages publishing
 - update-cron instructions were split into explicit local-mode and GitHub-Pages-mode phrases
 - legacy standalone affiliation extractor scripts were removed from the repo flow
+- `investment_advice/` was added for a second daily investment suggestion message after the arXiv report
 
 Known historical pitfalls:
 

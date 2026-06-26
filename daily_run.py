@@ -6,6 +6,7 @@ from __future__ import annotations
 import contextlib
 import io
 import json
+import os
 import subprocess
 import time
 from datetime import datetime
@@ -15,6 +16,7 @@ import fitz
 import openpyxl
 import requests
 
+from investment_advice import dca as investment_dca
 import monitor
 
 
@@ -24,6 +26,8 @@ MAX_PDF_TEXT_CHARS = 12000
 API_ATTEMPTS = 2
 DEEPSEEK_TIMEOUT = 120
 RUN_LOG = PROJECT_DIR / "logs" / f"daily_run_{monitor.date.today().isoformat()}.log"
+DEPLOY_MODE_FILE = PROJECT_DIR / ".deploy_mode"
+SILENT_MARKER = "[SILENT]"
 
 
 def log_event(message: str) -> None:
@@ -180,10 +184,22 @@ def format_report(
     papers: list[dict],
     results: dict[str, dict],
     failures: list[str] | None = None,
-    published: bool = True,
+    viewer_published: bool = False,
+    search_failures: list[dict] | None = None,
 ) -> str:
     failures = failures or []
+    search_failures = search_failures or []
     if not papers:
+        if search_failures:
+            lines = [
+                f"论文日报 | {monitor.date.today().isoformat()}",
+                "今日 arXiv 检索未完全成功，部分主题因超时或限流没有返回结果。",
+                "为避免误判为“无新论文”，本次不发布空论文日报；系统会在下次定时运行继续检索。",
+                "",
+                "未完成主题：",
+            ]
+            lines.extend(format_search_failures(search_failures))
+            return "\n".join(lines).strip()
         return f"今日（{monitor.date.today().isoformat()}）未发现新的相关论文。"
 
     successful_papers = [
@@ -211,17 +227,120 @@ def format_report(
             f"中文总结: {result['summary_cn']}",
             "",
         ])
+    if search_failures:
+        lines.extend([
+            "检索提示：部分主题检索失败，本次结果可能不完整。",
+            *format_search_failures(search_failures),
+            "",
+        ])
     if failures:
         lines.extend([
             "以下论文处理失败，将在下次自动重试：",
             *failures,
             "",
         ])
-    if published:
+    if viewer_published:
         lines.append("完整列表: https://yangzc153.github.io/Agent/")
+    elif failures:
+        lines.append("网页未发布本次结果，避免展示未补全的论文记录。")
     else:
-        lines.append("网页暂未发布本次结果，避免展示未补全的论文记录。")
+        lines.append("结果已直接推送；当前为本地模式，未发布到 GitHub Pages 展示页。")
     return "\n".join(lines).strip()
+
+
+def format_search_failures(search_failures: list[dict]) -> list[str]:
+    lines = []
+    for failure in search_failures:
+        topic_id = failure.get("topic_id", "")
+        topic_name = failure.get("topic_name", "") or "未命名主题"
+        error = str(failure.get("error", "")).strip()
+        if len(error) > 140:
+            error = f"{error[:137]}..."
+        lines.append(f"- T{topic_id} {topic_name}: {error}")
+    return lines
+
+
+def format_investment_report() -> str:
+    try:
+        result = investment_dca.generate_investment_advice()
+        return investment_dca.format_public_report(result)
+    except Exception as exc:
+        log_event(f"investment advice failed: {type(exc).__name__}: {exc}")
+        investment_dca.log_investment_event(
+            f"ERROR daily_run investment advice failed: {type(exc).__name__}: {exc}"
+        )
+        return investment_dca.format_public_report(
+            investment_dca.safe_fallback_advice(exc)
+        )
+
+
+def direct_send_enabled() -> bool:
+    value = os.getenv("DAILY_RUN_DIRECT_SEND", "").strip().lower()
+    return value in {"1", "true", "yes", "on"}
+
+
+def hermes_bin() -> Path:
+    configured = os.getenv("HERMES_BIN", "").strip()
+    if configured:
+        return Path(configured)
+    return Path(monitor.sys.executable).with_name("hermes")
+
+
+def send_direct_message(message: str) -> None:
+    target = os.getenv("DAILY_RUN_SEND_TARGET", "feishu").strip() or "feishu"
+    command = [
+        str(hermes_bin()),
+        "send",
+        "--to",
+        target,
+        "--file",
+        "-",
+        "--quiet",
+    ]
+    result = subprocess.run(
+        command,
+        cwd=PROJECT_DIR,
+        input=message,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
+        text=True,
+        timeout=180,
+    )
+    if result.returncode != 0:
+        raise RuntimeError(
+            f"hermes send failed for {target}: {result.stdout.strip()}"
+        )
+    log_event(f"direct message delivered to {target}")
+
+
+def deliver_daily_messages(arxiv_report: str) -> None:
+    investment_report = format_investment_report()
+    if direct_send_enabled():
+        sent_arxiv = False
+        sent_investment = False
+        try:
+            send_direct_message(arxiv_report)
+            sent_arxiv = True
+            send_direct_message(investment_report)
+            sent_investment = True
+        except Exception as exc:
+            log_event(f"direct delivery failed: {type(exc).__name__}: {exc}")
+            fallback_parts = []
+            if not sent_arxiv:
+                fallback_parts.append(arxiv_report)
+            if not sent_investment:
+                fallback_parts.append(investment_report)
+            if fallback_parts:
+                print("\n\n".join(fallback_parts))
+            else:
+                print(SILENT_MARKER)
+            return
+        print(SILENT_MARKER)
+        return
+
+    print(arxiv_report)
+    print()
+    print(investment_report)
 
 
 def run_monitor() -> dict:
@@ -246,14 +365,31 @@ def run_command(command: list[str]) -> None:
     log_event(f"command {' '.join(command)} output:\n{result.stdout.strip()}")
 
 
+def get_deploy_mode() -> str:
+    if not DEPLOY_MODE_FILE.exists():
+        return "local"
+    mode = DEPLOY_MODE_FILE.read_text(encoding="utf-8").strip().lower()
+    return mode if mode in {"local", "pages"} else "local"
+
+
+def should_publish_viewer() -> bool:
+    override = os.getenv("PUBLISH_VIEWER", "").strip().lower()
+    if override:
+        return override in {"1", "true", "yes", "on"}
+    return get_deploy_mode() == "pages"
+
+
 def main() -> int:
     log_event("daily_run started")
     try:
         payload = run_monitor()
         papers = payload.get("papers_to_process", [])[:monitor.DAILY_LLM_LIMIT]
+        search_failures = payload.get("search_failures", [])
         log_event(f"papers_to_process={len(papers)}")
+        if search_failures:
+            log_event(f"search_failures={json.dumps(search_failures, ensure_ascii=False)}")
         if not papers:
-            print(format_report([], {}))
+            deliver_daily_messages(format_report([], {}, search_failures=search_failures))
             log_event("daily_run finished: no papers")
             return 0
 
@@ -275,7 +411,13 @@ def main() -> int:
             monitor.sync_pending_state_from_excel(refresh_output_json=True)
 
         if failures:
-            print(format_report(papers, results, failures, published=False))
+            deliver_daily_messages(format_report(
+                papers,
+                results,
+                failures,
+                viewer_published=False,
+                search_failures=search_failures,
+            ))
             log_event("daily_run finished with partial failures")
             return 0
 
@@ -283,13 +425,29 @@ def main() -> int:
             str(Path(monitor.sys.executable)),
             "viewer/build_data.py",
         ])
-        run_command(["bash", "scripts/publish_viewer.sh"])
-        print(format_report(papers, results))
+        viewer_published = False
+        if should_publish_viewer():
+            run_command(["bash", "scripts/publish_viewer.sh"])
+            viewer_published = True
+        else:
+            log_event(
+                "viewer publish skipped: "
+                f"deploy_mode={get_deploy_mode()} "
+                f"PUBLISH_VIEWER={os.getenv('PUBLISH_VIEWER', 'unset')}"
+            )
+        deliver_daily_messages(format_report(
+            papers,
+            results,
+            viewer_published=viewer_published,
+            search_failures=search_failures,
+        ))
         log_event("daily_run finished successfully")
         return 0
     except Exception as exc:
         log_event(f"daily_run failed: {type(exc).__name__}: {exc}")
-        print(f"论文日报运行失败，将在下次自动重试。\n{type(exc).__name__}: {exc}")
+        deliver_daily_messages(
+            f"论文日报运行失败，将在下次自动重试。\n{type(exc).__name__}: {exc}"
+        )
         return 0
 
 

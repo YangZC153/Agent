@@ -36,13 +36,16 @@ SCREENING_CANDIDATES_PER_TOPIC = 25
 SCREENING_CANDIDATE_LIMIT = 125
 SCREENING_BATCH_SIZE = 20
 RECENT_PAPER_DAYS = 30
-REQUEST_INTERVAL = 3  # 秒
-ARXIV_TIMEOUT = 30
-ARXIV_API_ATTEMPTS = 2
+REQUEST_INTERVAL = int(os.getenv("ARXIV_REQUEST_INTERVAL", "6"))  # 秒
+ARXIV_TIMEOUT = int(os.getenv("ARXIV_TIMEOUT", "45"))
+ARXIV_API_ATTEMPTS = int(os.getenv("ARXIV_API_ATTEMPTS", "3"))
+ARXIV_FAILED_TOPIC_RETRY_ROUNDS = int(os.getenv("ARXIV_FAILED_TOPIC_RETRY_ROUNDS", "2"))
+ARXIV_FAILED_TOPIC_RETRY_DELAY = int(os.getenv("ARXIV_FAILED_TOPIC_RETRY_DELAY", "60"))
 ARXIV_USER_AGENT = (
     "hermes-arxiv-agent/1.0 "
     "(mailto:YangZC153@users.noreply.github.com)"
 )
+LAST_SEARCH_FAILURES: list[dict] = []
 DEEPSEEK_API_URL = "https://api.deepseek.com/v1/chat/completions"
 DEEPSEEK_SCREENING_MODEL = "deepseek-v4-flash"
 
@@ -688,39 +691,107 @@ def screen_candidates_with_deepseek(
     return screened
 
 
+def search_topic_candidates(
+    topic: dict,
+    crawled_ids: set[str],
+) -> tuple[list[dict], dict | None]:
+    topic_id = int(topic["id"])
+    try:
+        candidates = search_arxiv_papers(topic["query"])
+        failure = None
+    except Exception as exc:
+        print(f"[ERROR] Topic {topic_id} search failed: {exc}")
+        candidates = []
+        failure = {
+            "topic_id": topic_id,
+            "topic_name": topic.get("name", ""),
+            "error": str(exc),
+        }
+
+    recent_candidates = [
+        paper for paper in candidates
+        if paper_is_recent(paper)
+    ]
+    uncrawled_recent_candidates = [
+        paper for paper in recent_candidates
+        if paper["arxiv_id"] not in crawled_ids
+    ]
+    matched_candidates = [
+        paper for paper in uncrawled_recent_candidates
+        if paper_matches_topic(paper, topic)
+    ]
+    print(
+        f"[INFO] Topic {topic_id} candidates | "
+        f"retrieved={len(candidates)} recent{RECENT_PAPER_DAYS}={len(recent_candidates)} "
+        f"uncrawled={len(uncrawled_recent_candidates)} "
+        f"matched={len(matched_candidates)}"
+    )
+    return matched_candidates, failure
+
+
+def retry_failed_topic_searches(
+    topics_by_id: dict[int, dict],
+    failures_by_topic: dict[int, dict],
+    candidates_by_topic: dict[int, list[dict]],
+    crawled_ids: set[str],
+) -> None:
+    for retry_round in range(1, ARXIV_FAILED_TOPIC_RETRY_ROUNDS + 1):
+        if not failures_by_topic:
+            return
+
+        delay = ARXIV_FAILED_TOPIC_RETRY_DELAY * retry_round
+        failed_ids = sorted(failures_by_topic)
+        print(
+            f"[WARN] Retrying failed arXiv topics after {delay}s "
+            f"(round {retry_round}/{ARXIV_FAILED_TOPIC_RETRY_ROUNDS}): {failed_ids}"
+        )
+        time.sleep(delay)
+
+        for index, topic_id in enumerate(failed_ids):
+            topic = topics_by_id[topic_id]
+            matched_candidates, failure = search_topic_candidates(topic, crawled_ids)
+            if failure:
+                failure["retry_round"] = retry_round
+                failures_by_topic[topic_id] = failure
+            else:
+                candidates_by_topic[topic_id] = matched_candidates
+                failures_by_topic.pop(topic_id, None)
+                print(f"[INFO] Topic {topic_id} retry succeeded")
+            if index < len(failed_ids) - 1:
+                time.sleep(REQUEST_INTERVAL)
+
+
 def search_and_select_new_papers(
     topics: list[dict],
     crawled_ids: set[str],
     limit: int,
 ) -> list[dict]:
+    global LAST_SEARCH_FAILURES
+    LAST_SEARCH_FAILURES = []
+    topics_by_id = {int(topic["id"]): topic for topic in topics}
+    failures_by_topic: dict[int, dict] = {}
     candidates_by_topic: dict[int, list[dict]] = {}
     for index, topic in enumerate(topics):
         topic_id = int(topic["id"])
-        try:
-            candidates = search_arxiv_papers(topic["query"])
-        except Exception as e:
-            print(f"[ERROR] Topic {topic_id} search failed: {e}")
-            candidates = []
-        recent_candidates = [
-            paper for paper in candidates
-            if paper_is_recent(paper)
-        ]
-        uncrawled_recent_candidates = [
-            paper for paper in recent_candidates
-            if paper["arxiv_id"] not in crawled_ids
-        ]
-        candidates_by_topic[topic_id] = [
-            paper for paper in uncrawled_recent_candidates
-            if paper_matches_topic(paper, topic)
-        ]
-        print(
-            f"[INFO] Topic {topic_id} candidates | "
-            f"retrieved={len(candidates)} recent{RECENT_PAPER_DAYS}={len(recent_candidates)} "
-            f"uncrawled={len(uncrawled_recent_candidates)} "
-            f"matched={len(candidates_by_topic[topic_id])}"
+        candidates_by_topic[topic_id], failure = search_topic_candidates(
+            topic,
+            crawled_ids,
         )
+        if failure:
+            failures_by_topic[topic_id] = failure
         if index < len(topics) - 1:
             time.sleep(REQUEST_INTERVAL)
+
+    retry_failed_topic_searches(
+        topics_by_id=topics_by_id,
+        failures_by_topic=failures_by_topic,
+        candidates_by_topic=candidates_by_topic,
+        crawled_ids=crawled_ids,
+    )
+    LAST_SEARCH_FAILURES = [
+        failures_by_topic[topic_id]
+        for topic_id in sorted(failures_by_topic)
+    ]
 
     screening_pool = build_screening_pool(candidates_by_topic, topics)
     print(
@@ -1067,6 +1138,7 @@ def write_llm_output_json(
     fresh_downloaded_count: int = 0,
     pending_total_count: int | None = None,
     feishu_msg: str = "",
+    search_failures: list[dict] | None = None,
 ):
     """输出当前待处理状态，供 Hermes agent 继续执行或安全重试。"""
     if pending_total_count is None:
@@ -1081,6 +1153,7 @@ def write_llm_output_json(
         "papers_dir": str(PAPERS_DIR),
         "new_papers": papers_to_process,
         "papers_to_process": papers_to_process,
+        "search_failures": search_failures or [],
         "feishu_msg": feishu_msg,
     }
     with open(OUTPUT_JSON, "w", encoding="utf-8") as f:
@@ -1211,6 +1284,14 @@ def main():
 
     if not papers_to_process:
         # 无新论文，且无待补全论文
+        search_failures = list(LAST_SEARCH_FAILURES)
+        if search_failures:
+            feishu_msg = (
+                f"⚠️ 今日（{date.today().isoformat()}）arXiv 检索未完全成功，"
+                "部分主题因超时或限流没有返回结果；本次不判定为无新论文。"
+            )
+        else:
+            feishu_msg = f"✅ 今日（{date.today().isoformat()}）未发现新的生成式推荐论文。"
         output = {
             "date": date.today().isoformat(),
             "new_count": 0,
@@ -1219,12 +1300,16 @@ def main():
             "daily_llm_limit": DAILY_LLM_LIMIT,
             "new_papers": [],
             "papers_to_process": [],
-            "feishu_msg": f"✅ 今日（{date.today().isoformat()}）未发现新的生成式推荐论文。",
+            "search_failures": search_failures,
+            "feishu_msg": feishu_msg,
         }
         with open(OUTPUT_JSON, "w", encoding="utf-8") as f:
             json.dump(output, f, ensure_ascii=False, indent=2)
         export_viewer_json_from_excel()
-        print("[INFO] No new papers and no pending LLM tasks. Output JSON written.")
+        if search_failures:
+            print("[WARN] No papers selected, but some topic searches failed. Output JSON written.")
+        else:
+            print("[INFO] No new papers and no pending LLM tasks. Output JSON written.")
         return
 
     # 输出 JSON（供 hermes agent 读取并做 LLM summarization）
@@ -1232,6 +1317,7 @@ def main():
         papers_to_process=papers_to_process,
         fresh_downloaded_count=len(downloaded),
         pending_total_count=len(all_pending_ids),
+        search_failures=LAST_SEARCH_FAILURES,
     )
 
     print(f"[INFO] Output JSON: {OUTPUT_JSON}")
@@ -1256,6 +1342,7 @@ def main():
     print("  3. 将结果更新回 papers_record.xlsx 对应行")
     print("  4. 重建 viewer/papers_data.json")
     print("  5. 构建飞书 Markdown 消息并输出（cronjob 自动投递到飞书）")
+    print("  6. 论文日报输出后运行 python3 -m investment_advice.dca，输出第二条投资建议消息")
     print("=" * 60)
 
 

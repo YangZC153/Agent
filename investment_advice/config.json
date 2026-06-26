@@ -1,0 +1,30 @@
+{
+  "investment_plan": {
+    "total_budget": 30000,
+    "start_date": "2026-06-26",
+    "end_date": "2026-11-03",
+    "base_amount": 250,
+    "max_daily_amount": 1000,
+    "catchup_start_date": "2026-10-15"
+  },
+  "market_data": {
+    "source_name": "internal_market_signal",
+    "data_url": "https://fred.stlouisfed.org/data/NASDAQ100",
+    "timeout_seconds": 30
+  },
+  "reference_urls": {
+    "official_page": "https://www.huaan.com.cn/funds/040046/index.shtml",
+    "direct_limit_notice_2025_10_26": "https://www.huaan.com.cn/upload2010/2025/10/26/150616783_0_67ea0f6e-6faf-366f-a11c-0e441e8b317d.pdf",
+    "direct_limit_notice_2025_12_04": "https://www.huaan.com.cn/upload2010/2025/12/04/000521095_3f7a9499-319a-37ab-a2b8-72584e9310b6.pdf"
+  },
+  "non_investment_dates": [
+    "2026-07-03",
+    "2026-09-07",
+    "2026-09-25",
+    "2026-10-01",
+    "2026-10-02",
+    "2026-10-05",
+    "2026-10-06",
+    "2026-10-07"
+  ]
+}

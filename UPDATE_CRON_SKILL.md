@@ -85,6 +85,14 @@ Confirm that `cronjob_prompt.generated.txt`:
 
 - contains the real absolute `PROJECT_DIR`
 - does not contain placeholder paths such as `/path/to/hermes-arxiv-agent`
+- includes the investment advice step:
+
+```bash
+python3 -m investment_advice.dca
+```
+
+- instructs that the investment advice is sent after the arXiv report as a separate message with only `推荐投资金额` and `推荐原因说明`
+- instructs that investment advice is never written to `viewer/papers_data.json` and never published to GitHub Pages
 - in local mode, does not include the static-site publishing step
 - in GitHub Pages mode, includes the static-site publishing step:
 
@@ -116,6 +124,7 @@ Confirm all of the following:
 - delivery is set to `feishu`
 - local mode stays local-only
 - GitHub Pages mode contains the publish step and points to the user's own writable fork
+- the prompt still sends the investment advice after the paper report as a separate, two-line message
 
 ## Behavior Rules
 
@@ -131,4 +140,4 @@ Confirm all of the following:
 
 ## Suggested User-Facing Outcome
 
-At the end, the user should be able to continue using the existing local repository and existing data, while the daily cron job now also publishes updated `viewer/papers_data.json` to GitHub and triggers GitHub Pages deployment.
+At the end, the user should be able to continue using the existing local repository and existing data, while the daily cron job sends the arXiv report first, then the investment advice message, and in GitHub Pages mode also publishes updated `viewer/papers_data.json` to GitHub and triggers GitHub Pages deployment.
