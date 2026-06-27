@@ -1,8 +1,10 @@
 #!/usr/bin/env python3
 """Generate a short, sanitized daily investment suggestion.
 
-The public output intentionally contains only two fields:
+The public output intentionally contains only four fields:
 
+股市指数：...
+涨跌比例：...
 推荐投资金额：xxx 元
 推荐原因说明：...
 """
@@ -70,8 +72,10 @@ PUBLIC_BANNED_TOKENS = [
     "040046",
     "ETF",
     "基金",
-    "指数",
 ]
+
+MARKET_INDEX_UNAVAILABLE_TEXT = "暂无完整行情数据"
+MARKET_CHANGE_UNAVAILABLE_TEXT = "无法计算"
 
 
 class MarketDataError(RuntimeError):
@@ -101,9 +105,13 @@ class Signal:
 class InvestmentAdvice:
     recommended_investment_amount: int
     investment_reason: str
+    market_index_description: str = MARKET_INDEX_UNAVAILABLE_TEXT
+    market_change_description: str = MARKET_CHANGE_UNAVAILABLE_TEXT
 
     def to_public_dict(self) -> dict:
         return {
+            "market_index_description": self.market_index_description,
+            "market_change_description": self.market_change_description,
             "recommended_investment_amount": self.recommended_investment_amount,
             "investment_reason": sanitize_public_reason(self.investment_reason),
         }
@@ -351,6 +359,48 @@ def move_text(daily_return: float) -> str:
     return f"{direction}{percent_text(daily_return)}"
 
 
+def market_move_text(daily_return: float | None) -> str:
+    if daily_return is None:
+        return MARKET_CHANGE_UNAVAILABLE_TEXT
+    if daily_return > 0:
+        return f"上涨{percent_text(daily_return)}"
+    if daily_return < 0:
+        return f"下跌{percent_text(daily_return)}"
+    return "持平0.00%"
+
+
+def format_market_close(value: float | None) -> str:
+    if value is None:
+        return "--"
+    return f"{value:.2f}"
+
+
+def format_market_index_description(
+    *,
+    previous_date: date | None,
+    previous_close: float | None,
+    latest_date: date | None,
+    latest_close: float | None,
+) -> str:
+    if previous_close is None or latest_close is None:
+        return MARKET_INDEX_UNAVAILABLE_TEXT
+
+    previous_label = (
+        f"上一交易日（{previous_date.isoformat()}）"
+        if previous_date
+        else "上一交易日"
+    )
+    latest_label = (
+        f"最新交易日（{latest_date.isoformat()}）"
+        if latest_date
+        else "最新交易日"
+    )
+    return (
+        f"{previous_label}{format_market_close(previous_close)}，"
+        f"{latest_label}{format_market_close(latest_close)}"
+    )
+
+
 def cap_amount(amount: int, max_daily_amount: int, remaining_budget: int) -> int:
     return max(0, min(int(amount), int(max_daily_amount), int(remaining_budget)))
 
@@ -368,6 +418,14 @@ def format_public_report(result: InvestmentAdvice | dict) -> str:
         payload = result.to_public_dict()
     else:
         payload = {
+            "market_index_description": str(
+                result.get("market_index_description")
+                or MARKET_INDEX_UNAVAILABLE_TEXT
+            ),
+            "market_change_description": str(
+                result.get("market_change_description")
+                or MARKET_CHANGE_UNAVAILABLE_TEXT
+            ),
             "recommended_investment_amount": int(
                 result.get("recommended_investment_amount", 0)
             ),
@@ -376,6 +434,8 @@ def format_public_report(result: InvestmentAdvice | dict) -> str:
             ),
         }
     return (
+        f"股市指数：{payload['market_index_description']}\n"
+        f"涨跌比例：{payload['market_change_description']}\n"
         f"推荐投资金额：{payload['recommended_investment_amount']} 元\n"
         f"推荐原因说明：{payload['investment_reason']}"
     )
@@ -389,11 +449,38 @@ def find_existing_report(state: dict, today: date) -> InvestmentAdvice | None:
             return InvestmentAdvice(
                 recommended_investment_amount=int(item.get("final_amount") or 0),
                 investment_reason=str(item.get("reason") or ""),
+                market_index_description=format_market_index_description(
+                    previous_date=parse_optional_date(item.get("previous_signal_date")),
+                    previous_close=parse_optional_float(item.get("previous_close")),
+                    latest_date=parse_optional_date(item.get("signal_date")),
+                    latest_close=parse_optional_float(item.get("latest_close")),
+                ),
+                market_change_description=market_move_text(
+                    parse_optional_float(item.get("daily_return"))
+                ),
             )
     return InvestmentAdvice(
         recommended_investment_amount=0,
         investment_reason="今日建议已生成，未找到历史原因说明，今日不重复计算。",
     )
+
+
+def parse_optional_date(value: object) -> date | None:
+    if not value:
+        return None
+    try:
+        return date.fromisoformat(str(value))
+    except ValueError:
+        return None
+
+
+def parse_optional_float(value: object) -> float | None:
+    if value is None:
+        return None
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return None
 
 
 def build_reason(
@@ -457,6 +544,7 @@ def append_history_and_save(
     log_path: Path,
     report_date: date,
     signal_date: date | None,
+    previous_signal_date: date | None,
     latest_close: float | None,
     previous_close: float | None,
     daily_return: float | None,
@@ -475,6 +563,7 @@ def append_history_and_save(
         {
             "report_date": report_date.isoformat(),
             "signal_date": signal_date.isoformat() if signal_date else None,
+            "previous_signal_date": previous_signal_date.isoformat() if previous_signal_date else None,
             "latest_close": latest_close,
             "previous_close": previous_close,
             "daily_return": daily_return,
@@ -541,6 +630,7 @@ def generate_investment_advice(
             log_path=log_path,
             report_date=report_date,
             signal_date=None,
+            previous_signal_date=None,
             latest_close=None,
             previous_close=None,
             daily_return=None,
@@ -561,6 +651,7 @@ def generate_investment_advice(
             log_path=log_path,
             report_date=report_date,
             signal_date=None,
+            previous_signal_date=None,
             latest_close=None,
             previous_close=None,
             daily_return=None,
@@ -582,6 +673,7 @@ def generate_investment_advice(
     latest_close = None
     previous_close = None
     signal_date = None
+    previous_signal_date = None
     daily_return = None
     trigger_level = "Normal"
     signal_amount = base_amount
@@ -604,6 +696,7 @@ def generate_investment_advice(
             previous_close = previous.close
             latest_close = latest.close
             signal_date = latest.observed_date
+            previous_signal_date = previous.observed_date
             if previous.close <= 0:
                 data_status = "insufficient"
             else:
@@ -644,6 +737,7 @@ def generate_investment_advice(
         log_path=log_path,
         report_date=report_date,
         signal_date=signal_date,
+        previous_signal_date=previous_signal_date,
         latest_close=latest_close,
         previous_close=previous_close,
         daily_return=daily_return,
@@ -654,7 +748,17 @@ def generate_investment_advice(
         reason=reason,
         remaining_budget_before=remaining_budget,
     )
-    return InvestmentAdvice(final_amount, reason).to_public_dict()
+    return InvestmentAdvice(
+        recommended_investment_amount=final_amount,
+        investment_reason=reason,
+        market_index_description=format_market_index_description(
+            previous_date=previous_signal_date,
+            previous_close=previous_close,
+            latest_date=signal_date,
+            latest_close=latest_close,
+        ),
+        market_change_description=market_move_text(daily_return),
+    ).to_public_dict()
 
 
 def safe_fallback_advice(error: Exception) -> dict:
@@ -666,7 +770,7 @@ def safe_fallback_advice(error: Exception) -> dict:
 
 def main(argv: Iterable[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Generate daily investment advice.")
-    parser.add_argument("--json", action="store_true", help="print JSON instead of two-line report")
+    parser.add_argument("--json", action="store_true", help="print JSON instead of four-line report")
     parser.add_argument("--date", help="override report date, YYYY-MM-DD")
     parser.add_argument("--config", type=Path, default=DEFAULT_CONFIG_FILE)
     parser.add_argument("--state", type=Path, default=DEFAULT_STATE_FILE)

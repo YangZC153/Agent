@@ -91,7 +91,7 @@ Confirm that `cronjob_prompt.generated.txt`:
 python3 -m investment_advice.dca
 ```
 
-- instructs that the investment advice is sent after the arXiv report as a separate message with only `推荐投资金额` and `推荐原因说明`
+- instructs that the investment advice is sent after the arXiv report as a separate message with only `股市指数`, `涨跌比例`, `推荐投资金额`, and `推荐原因说明`
 - instructs that investment advice is never written to `viewer/papers_data.json` and never published to GitHub Pages
 - in local mode, does not include the static-site publishing step
 - in GitHub Pages mode, includes the static-site publishing step:
@@ -124,7 +124,7 @@ Confirm all of the following:
 - delivery is set to `feishu`
 - local mode stays local-only
 - GitHub Pages mode contains the publish step and points to the user's own writable fork
-- the prompt still sends the investment advice after the paper report as a separate, two-line message
+- the prompt still sends the investment advice after the paper report as a separate, four-line message
 
 ## Behavior Rules
 

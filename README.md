@@ -15,6 +15,8 @@ python3 -m investment_advice.dca
 The public output is limited to:
 
 ```text
+股市指数：上一交易日（YYYY-MM-DD）xxxx.xx，最新交易日（YYYY-MM-DD）xxxx.xx
+涨跌比例：上涨/下跌x.xx%
 推荐投资金额：xxx 元
 推荐原因说明：xxxxxxxx
 ```

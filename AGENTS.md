@@ -66,8 +66,8 @@ Important:
 - old standalone extractor scripts were removed from the main repo flow
 - `crawled_date` means the latest processing/write-back date, not a permanent first-seen date
 - investment advice is a suggestion only; it never executes trades
-- investment advice output must contain only `推荐投资金额` and `推荐原因说明`
-- investment advice output must not reveal the investment object, market object, data source, URLs, platform, code, index, fund, or ETF names
+- investment advice output must contain only `股市指数`, `涨跌比例`, `推荐投资金额`, and `推荐原因说明`
+- investment advice output may include generic market index values and the rise/fall percentage, but must not reveal the investment object, market object name, data source, URLs, platform, code, index name, fund name, or ETF name
 - investment advice must not be written to `viewer/papers_data.json` or published on GitHub Pages; Pages only shows paper viewer data
 - `DAILY_RUN_DIRECT_SEND=1` enables two separate Feishu sends from `daily_run.py`; `DAILY_RUN_SEND_TARGET` defaults to `feishu`
 

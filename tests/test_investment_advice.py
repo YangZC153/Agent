@@ -7,6 +7,7 @@ from pathlib import Path
 from investment_advice.dca import (
     DEFAULT_CONFIG,
     count_remaining_open_days,
+    format_public_report,
     generate_investment_advice,
 )
 
@@ -53,7 +54,22 @@ class InvestmentAdviceTests(unittest.TestCase):
             self.assertEqual(repeated, result)
             self.assertEqual(state["already_suggested_amount"], 500)
             self.assertEqual(len(state["history"]), 1)
+            self.assertEqual(
+                result["market_index_description"],
+                "上一交易日（2026-06-24）100.00，最新交易日（2026-06-25）98.28",
+            )
+            self.assertEqual(result["market_change_description"], "下跌1.72%")
             self.assertNotIn("NASDAQ", result["investment_reason"])
+
+            report_lines = format_public_report(result).splitlines()
+            self.assertEqual(len(report_lines), 4)
+            self.assertEqual(
+                report_lines[0],
+                "股市指数：上一交易日（2026-06-24）100.00，最新交易日（2026-06-25）98.28",
+            )
+            self.assertEqual(report_lines[1], "涨跌比例：下跌1.72%")
+            self.assertTrue(report_lines[2].startswith("推荐投资金额："))
+            self.assertTrue(report_lines[3].startswith("推荐原因说明："))
 
     def test_closed_day_returns_zero_without_fetching_market_data(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -70,6 +86,8 @@ class InvestmentAdviceTests(unittest.TestCase):
             state = json.loads(state_path.read_text(encoding="utf-8"))
             self.assertEqual(result["recommended_investment_amount"], 0)
             self.assertIn("今日不是投资开放日", result["investment_reason"])
+            self.assertEqual(result["market_index_description"], "暂无完整行情数据")
+            self.assertEqual(result["market_change_description"], "无法计算")
             self.assertEqual(state["already_suggested_amount"], 0)
 
     def test_same_boost_signal_is_not_reused_on_later_open_day(self):
@@ -142,6 +160,8 @@ class InvestmentAdviceTests(unittest.TestCase):
 
             self.assertEqual(result["recommended_investment_amount"], 250)
             self.assertIn("未能获取最新行情数据", result["investment_reason"])
+            self.assertEqual(result["market_index_description"], "暂无完整行情数据")
+            self.assertEqual(result["market_change_description"], "无法计算")
 
     def test_insufficient_history_uses_base_amount_with_specific_reason(self):
         with tempfile.TemporaryDirectory() as tmp:
